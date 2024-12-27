@@ -1,4 +1,3 @@
-// styles/Home.module.css
 .container {
     padding: 20px;
     max-width: 600px;
@@ -26,4 +25,3 @@
   .farmButton:hover {
     background-color: #006699;
   }
-  
