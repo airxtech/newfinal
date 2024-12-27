@@ -3,6 +3,11 @@
     max-width: 600px;
     margin: 0 auto;
     text-align: center;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
   
   .userInfo {
@@ -10,6 +15,8 @@
     padding: 20px;
     border: 1px solid #ccc;
     border-radius: 8px;
+    width: 100%;
+    max-width: 400px;
   }
   
   .farmButton {
@@ -20,8 +27,15 @@
     border: none;
     border-radius: 8px;
     cursor: pointer;
+    transition: background-color 0.2s;
   }
   
   .farmButton:hover {
     background-color: #006699;
+  }
+  
+  .smallText {
+    font-size: 0.875rem;
+    color: #666;
+    margin-top: 0.5rem;
   }

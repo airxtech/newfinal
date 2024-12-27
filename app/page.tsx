@@ -1,3 +1,4 @@
+// app/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -20,68 +21,45 @@ export default function Home() {
   const [initStatus, setInitStatus] = useState<string>('initial')
 
   useEffect(() => {
-    console.log('Component mounted, setting isClient to true')
     setIsClient(true)
+    
+    // Wait for Telegram WebApp script to load
+    const waitForTelegram = () => {
+      if (window.Telegram?.WebApp) {
+        initTelegram()
+      } else {
+        setTimeout(waitForTelegram, 100)
+      }
+    }
+    
+    waitForTelegram()
   }, [])
 
-  useEffect(() => {
-    if (!isClient) {
-      console.log('Not client side yet, skipping Telegram init')
-      return
-    }
-
-    const initTelegram = () => {
-      console.log('Attempting to initialize Telegram WebApp')
-      setInitStatus('initializing')
-
-      // Check if we're running in Telegram's environment
-      const urlParams = new URLSearchParams(window.location.hash.slice(1))
-      const tgWebAppData = urlParams.get('tgWebAppData')
-      console.log('tgWebAppData present:', !!tgWebAppData)
-
-      const webApp = window.Telegram?.WebApp
-      if (!webApp) {
-        console.log('Telegram WebApp not found on window object')
-        setInitStatus('no-webapp')
-        return
-      }
-
-      console.log('WebApp object found, checking initDataUnsafe')
-      console.log('initDataUnsafe:', webApp.initDataUnsafe)
+  const initTelegram = () => {
+    try {
+      const webApp = window.Telegram.WebApp
+      console.log('Initializing WebApp...')
       
-      try {
-        webApp.ready()
-        webApp.expand()
-        console.log('WebApp ready() and expand() called')
-
-        if (webApp.initDataUnsafe?.user) {
-          const userData = webApp.initDataUnsafe.user
-          console.log('User data found:', userData)
-          setUser(userData)
-          setInitStatus('user-loaded')
-          fetchUserData(userData.id)
-        } else {
-          console.log('No user data in initDataUnsafe')
-          setInitStatus('no-user-data')
-        }
-      } catch (error) {
-        console.error('Error during Telegram WebApp initialization:', error)
-        setInitStatus('init-error')
+      // Initialize WebApp
+      webApp.ready()
+      webApp.expand()
+      
+      // Get user data
+      if (webApp.initDataUnsafe?.user) {
+        const userData = webApp.initDataUnsafe.user
+        console.log('User data:', userData)
+        setUser(userData)
+        setInitStatus('loaded')
+        fetchUserData(userData.id)
+      } else {
+        console.log('No user data found')
+        setInitStatus('no-user')
       }
+    } catch (error) {
+      console.error('WebApp init error:', error)
+      setInitStatus('error')
     }
-
-    initTelegram()
-  }, [isClient])
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (farming) {
-      interval = setInterval(() => {
-        setCounter(prev => prev + 1)
-      }, 1000)
-    }
-    return () => clearInterval(interval)
-  }, [farming])
+  }
 
   const fetchUserData = async (telegramId: number) => {
     try {
@@ -96,10 +74,11 @@ export default function Home() {
           balance: 0
         })
       })
+      if (!response.ok) throw new Error('API response not ok')
       const data = await response.json()
       setBalance(data.balance)
     } catch (error) {
-      console.error('Error fetching user data:', error)
+      console.error('API error:', error)
     }
   }
 
@@ -111,7 +90,7 @@ export default function Home() {
       setCounter(0)
       
       try {
-        await fetch('/api/user', {
+        const response = await fetch('/api/user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -122,44 +101,47 @@ export default function Home() {
             balance: newBalance
           })
         })
+        if (!response.ok) throw new Error('Failed to update balance')
       } catch (error) {
-        console.error('Error updating balance:', error)
+        console.error('Update error:', error)
       }
     } else {
       setFarming(true)
     }
   }
 
-  // Enhanced loading states with additional information
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    if (farming) {
+      interval = setInterval(() => {
+        setCounter(prev => prev + 1)
+      }, 1000)
+    }
+    return () => clearInterval(interval)
+  }, [farming])
+
+  // SSR loading state
   if (!isClient) {
-    return <div className={styles.container}>Loading... (Server Side)</div>
+    return <div className={styles.container}>Initializing...</div>
   }
 
-  if (!window.Telegram?.WebApp) {
-    return (
-      <div className={styles.container}>
-        <p>Loading Telegram Web App... (Status: {initStatus})</p>
-        <p className={styles.smallText}>
-          If you're seeing this outside of Telegram, please open this app through your Telegram bot.
-        </p>
-      </div>
-    )
-  }
-
+  // User-friendly loading states
   if (!user) {
     return (
       <div className={styles.container}>
-        <p>Loading user data... (Status: {initStatus})</p>
-        <p className={styles.smallText}>
-          Make sure you're opening this through the Telegram bot.
-        </p>
+        <h2>Loading Mini App</h2>
+        <p>Status: {initStatus}</p>
+        <div className={styles.smallText}>
+          Please make sure you're opening this through Telegram
+        </div>
       </div>
     )
   }
 
+  // Main app UI
   return (
     <div className={styles.container}>
-      <h1>Welcome to Farming Mini App</h1>
+      <h1>Farming Mini App</h1>
       <div className={styles.userInfo}>
         <p>Name: {user.first_name} {user.last_name}</p>
         <p>Username: {user.username}</p>
