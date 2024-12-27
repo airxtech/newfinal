@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import styles from './page.module.css'
-import ScratchCard from '@/components/shared/ScratchCard'
+import ScratchCard from '../components/shared/ScratchCard'
 import { usePathname } from 'next/navigation'
 
 export default function EarnPage() {

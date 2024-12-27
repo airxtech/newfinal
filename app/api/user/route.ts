@@ -2,11 +2,17 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// Helper function to generate referral code
+const generateReferralCode = (telegramId: number): string => {
+  const timestamp = Date.now().toString(36)
+  const userPart = telegramId.toString(36)
+  return `ZOA${userPart}${timestamp}`.toUpperCase()
+}
+
 export async function GET(request: Request) {
   console.log('GET request received');
   
   try {
-    // Get telegramId from URL params
     const { searchParams } = new URL(request.url);
     const telegramId = searchParams.get('telegramId');
     
@@ -51,7 +57,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log('Request body:', body);
     
-    const { telegramId, firstName, lastName, username, balance } = body;
+    const { telegramId, firstName, lastName, username, zoaBalance, scratchChances } = body;
 
     const user = await prisma.user.upsert({
       where: { 
@@ -61,7 +67,8 @@ export async function POST(request: Request) {
         firstName,
         lastName,
         username,
-        balance: balance || 0
+        zoaBalance: zoaBalance || 0,
+        ...(scratchChances !== undefined && { scratchChances })
       },
       create: {
         id: telegramId.toString(),
@@ -69,7 +76,9 @@ export async function POST(request: Request) {
         firstName,
         lastName: lastName || '',
         username: username || '',
-        balance: balance || 0
+        zoaBalance: zoaBalance || 0,
+        scratchChances: scratchChances || 3,
+        referralCode: generateReferralCode(Number(telegramId))
       }
     });
     

@@ -1,7 +1,7 @@
 // src/components/shared/ScratchCard.tsx
 import React, { useRef, useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { useRewards } from '@/hooks/useRewards';
+import { useRewards } from '../../hooks/useRewards';
 
 interface ScratchCardProps {
   onClose: () => void;
