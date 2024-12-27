@@ -1,4 +1,3 @@
-// app/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -18,29 +17,61 @@ export default function Home() {
   const [counter, setCounter] = useState(0)
   const [balance, setBalance] = useState(0)
   const [isClient, setIsClient] = useState(false)
+  const [initStatus, setInitStatus] = useState<string>('initial')
 
   useEffect(() => {
+    console.log('Component mounted, setting isClient to true')
     setIsClient(true)
-    
-    // Initialize Telegram WebApp
-    const webApp = window.Telegram?.WebApp
-    if (webApp) {
-      webApp.ready()
-      webApp.expand()
-
-      // Get user data
-      if (webApp.initDataUnsafe?.user) {
-        const userData = webApp.initDataUnsafe.user
-        console.log('User data:', userData)  // Debug log
-        setUser(userData)
-        fetchUserData(userData.id)
-      } else {
-        console.log('No user data available')  // Debug log
-      }
-    } else {
-      console.log('Telegram WebApp not available')  // Debug log
-    }
   }, [])
+
+  useEffect(() => {
+    if (!isClient) {
+      console.log('Not client side yet, skipping Telegram init')
+      return
+    }
+
+    const initTelegram = () => {
+      console.log('Attempting to initialize Telegram WebApp')
+      setInitStatus('initializing')
+
+      // Check if we're running in Telegram's environment
+      const urlParams = new URLSearchParams(window.location.hash.slice(1))
+      const tgWebAppData = urlParams.get('tgWebAppData')
+      console.log('tgWebAppData present:', !!tgWebAppData)
+
+      const webApp = window.Telegram?.WebApp
+      if (!webApp) {
+        console.log('Telegram WebApp not found on window object')
+        setInitStatus('no-webapp')
+        return
+      }
+
+      console.log('WebApp object found, checking initDataUnsafe')
+      console.log('initDataUnsafe:', webApp.initDataUnsafe)
+      
+      try {
+        webApp.ready()
+        webApp.expand()
+        console.log('WebApp ready() and expand() called')
+
+        if (webApp.initDataUnsafe?.user) {
+          const userData = webApp.initDataUnsafe.user
+          console.log('User data found:', userData)
+          setUser(userData)
+          setInitStatus('user-loaded')
+          fetchUserData(userData.id)
+        } else {
+          console.log('No user data in initDataUnsafe')
+          setInitStatus('no-user-data')
+        }
+      } catch (error) {
+        console.error('Error during Telegram WebApp initialization:', error)
+        setInitStatus('init-error')
+      }
+    }
+
+    initTelegram()
+  }, [isClient])
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -99,19 +130,31 @@ export default function Home() {
     }
   }
 
-  // Return loading state during SSR
+  // Enhanced loading states with additional information
   if (!isClient) {
-    return <div className={styles.container}>Loading...</div>
+    return <div className={styles.container}>Loading... (Server Side)</div>
   }
 
-  // Show loading if Telegram WebApp is not available
   if (!window.Telegram?.WebApp) {
-    return <div className={styles.container}>Loading Telegram Web App...</div>
+    return (
+      <div className={styles.container}>
+        <p>Loading Telegram Web App... (Status: {initStatus})</p>
+        <p className={styles.smallText}>
+          If you're seeing this outside of Telegram, please open this app through your Telegram bot.
+        </p>
+      </div>
+    )
   }
 
-  // Show loading if user data is not yet available
   if (!user) {
-    return <div className={styles.container}>Loading user data...</div>
+    return (
+      <div className={styles.container}>
+        <p>Loading user data... (Status: {initStatus})</p>
+        <p className={styles.smallText}>
+          Make sure you're opening this through the Telegram bot.
+        </p>
+      </div>
+    )
   }
 
   return (
