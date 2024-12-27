@@ -85,7 +85,17 @@ export default function Home() {
 
   const fetchUserData = async (telegramId: number) => {
     try {
-      const response = await fetch('/api/user', {
+      // First try to get existing user data
+      const getResponse = await fetch(`/api/user?telegramId=${telegramId}`)
+      
+      if (getResponse.ok) {
+        const data = await getResponse.json()
+        setBalance(data.balance)
+        return
+      }
+
+      // If user doesn't exist, create new user
+      const createResponse = await fetch('/api/user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -96,11 +106,15 @@ export default function Home() {
           balance: 0
         })
       })
-      if (!response.ok) throw new Error('API response not ok')
-      const data = await response.json()
+
+      if (!createResponse.ok) {
+        throw new Error('Failed to create user')
+      }
+
+      const data = await createResponse.json()
       setBalance(data.balance)
     } catch (error) {
-      console.error('API error:', error)
+      console.error('Error fetching user data:', error)
     }
   }
 
@@ -123,9 +137,17 @@ export default function Home() {
             balance: newBalance
           })
         })
-        if (!response.ok) throw new Error('Failed to update balance')
+        
+        if (!response.ok) {
+          throw new Error('Failed to update balance')
+        }
+
+        const data = await response.json()
+        console.log('Balance updated:', data)
       } catch (error) {
-        console.error('Update error:', error)
+        console.error('Error updating balance:', error)
+        // Revert balance on error
+        setBalance(balance)
       }
     } else {
       setFarming(true)
