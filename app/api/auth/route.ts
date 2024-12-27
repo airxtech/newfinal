@@ -19,9 +19,11 @@ function validateTelegramWebAppData(data: any) {
     .map(([key, value]) => `${key}=${value}`)
     .join('\n');
 
-  const secretKey = createHash('sha256')
-    .update(BOT_TOKEN)
-    .digest();
+  const secretKey = new Uint8Array(
+    createHash('sha256')
+      .update(BOT_TOKEN)
+      .digest()
+  );
   
   const hmac = createHmac('sha256', secretKey)
     .update(dataCheckString)
