@@ -85,11 +85,13 @@ export default function Home() {
 
   const fetchUserData = async (telegramId: number) => {
     try {
+      console.log('Fetching user data for ID:', telegramId) // Added line
       // First try to get existing user data
       const getResponse = await fetch(`/api/user?telegramId=${telegramId}`)
       
       if (getResponse.ok) {
         const data = await getResponse.json()
+        console.log('API Response:', data) // Added line
         setBalance(data.balance)
         return
       }
@@ -121,7 +123,10 @@ export default function Home() {
   const handleFarming = async () => {
     if (farming) {
       setFarming(false)
+      console.log('Current balance before update:', balance) // Added line
+      console.log('Counter value:', counter) // Added line
       const newBalance = balance + counter
+      console.log('New balance to be set:', newBalance) // Added line
       setBalance(newBalance)
       setCounter(0)
       
