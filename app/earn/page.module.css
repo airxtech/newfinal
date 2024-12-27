@@ -1,0 +1,110 @@
+.earnPage {
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .balanceCard {
+    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  
+  .balanceCard h2 {
+    font-size: 18px;
+    color: var(--tg-theme-hint-color, #999999);
+    margin-bottom: 8px;
+  }
+  
+  .balance {
+    font-size: 36px;
+    font-weight: bold;
+    color: var(--tg-theme-text-color, #000000);
+  }
+  
+  .farming {
+    display: block;
+    font-size: 24px;
+    color: var(--tg-theme-button-color, #2481cc);
+    margin-top: 8px;
+  }
+  
+  .earnMethods {
+    display: grid;
+    gap: 24px;
+  }
+  
+  .scratchSection,
+  .farmingSection {
+    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  
+  .scratchSection h3,
+  .farmingSection h3 {
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: var(--tg-theme-text-color, #000000);
+  }
+  
+  .scratchSection p,
+  .farmingSection p {
+    color: var(--tg-theme-hint-color, #999999);
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+  
+  .scratchButton,
+  .farmButton {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background-color: var(--tg-theme-button-color, #2481cc);
+    color: var(--tg-theme-button-text-color, #ffffff);
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  
+  .scratchButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .farmButton.active {
+    background-color: var(--tg-theme-destructive-text-color, #ff3b30);
+  }
+  
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 60px);
+    color: var(--tg-theme-hint-color, #999999);
+  }
+  
+  .farmingDisclaimer {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    animation: fadeInOut 3s forwards;
+    z-index: 1000;
+  }
+  
+  @keyframes fadeInOut {
+    0% { opacity: 0; transform: translate(-50%, 20px); }
+    10% { opacity: 1; transform: translate(-50%, 0); }
+    90% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, -20px); }
+  }

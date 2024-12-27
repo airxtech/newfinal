@@ -8,12 +8,108 @@ datasource db {
 }
 
 model User {
+  id               String    @id @map("_id")
+  telegramId       Int      @unique
+  firstName        String
+  lastName         String?
+  username         String?
+  zoaBalance       Float    @default(0)
+  tonBalance       Float?   // From connected wallet
+  scratchChances   Int      @default(3)
+  lastChanceReset  DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  referralCode     String   @unique
+  referredBy       String?
+  referralCount    Int      @default(0)
+  tasks            UserTask[]
+  tokens           UserToken[]
+  transactions     Transaction[]
+  createdTokens    Token[]  @relation("TokenCreator")
+}
+
+model Token {
+  id                String    @id @map("_id")
+  name              String
+  ticker            String    @unique
+  description       String
+  imageUrl          String
+  website           String?
+  twitter           String?
+  telegram          String?
+  linkedin          String?   // Only for ZOA Guaranteed tokens
+  isGuaranteed      Boolean   @default(false)
+  creator           User      @relation("TokenCreator", fields: [creatorId], references: [id])
+  creatorId         String
+  totalSupply       Float     @default(300000000) // 300M for regular tokens
+  currentPrice      Float
+  marketCap         Float
+  bondingCurve      Float     @default(0) // Percentage filled
+  isListed          Boolean   @default(false)
+  listingDate       DateTime?
+  createdAt         DateTime  @default(now())
+  holders           UserToken[]
+  transactions      Transaction[]
+  contractAddress   String?   // After STON.fi listing
+}
+
+model UserToken {
   id        String   @id @map("_id")
-  telegramId Int     @unique
-  firstName String
-  lastName  String?
-  username  String?
-  balance   Int      @default(0)
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  token     Token    @relation(fields: [tokenId], references: [id])
+  tokenId   String
+  balance   Float
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([userId, tokenId])
+}
+
+model Transaction {
+  id            String   @id @map("_id")
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String
+  token         Token    @relation(fields: [tokenId], references: [id])
+  tokenId       String
+  type          TransactionType
+  amount        Float    // TON amount
+  tokenAmount   Float    // Token amount
+  price         Float    // Token price at transaction time
+  timestamp     DateTime @default(now())
+}
+
+model Task {
+  id          String    @id @map("_id")
+  type        TaskType
+  name        String
+  description String
+  reward      Float
+  isDaily     Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  userTasks   UserTask[]
+}
+
+model UserTask {
+  id        String   @id @map("_id")
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  task      Task     @relation(fields: [taskId], references: [id])
+  taskId    String
+  completed Boolean  @default(false)
+  completedAt DateTime?
+  lastCompleted DateTime? // For daily tasks
+
+  @@unique([userId, taskId])
+}
+
+enum TransactionType {
+  BUY
+  SELL
+}
+
+enum TaskType {
+  SOCIAL
+  DAILY
+  REFERRAL
 }
