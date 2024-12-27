@@ -1,30 +1,45 @@
-// app/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+
+interface User {
+  id: string;
+  firstName: string;
+  balance: number;
+}
+
+interface TelegramWebApp {
+  initData: string;
+  ready?: () => void;
+}
 
 declare global {
   interface Window {
     Telegram?: {
-      WebApp: {
-        initData: string;
-        ready: () => void;
-      };
+      WebApp: TelegramWebApp;
     };
   }
 }
 
-export default function Home() {
-  const [user, setUser] = useState<any>(null);
+const Home = () => {
+  const [user, setUser] = useState<User | null>(null);
   const [isFarming, setIsFarming] = useState(false);
   const [farmingTime, setFarmingTime] = useState(0);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState('');
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+
     const authenticate = async () => {
       try {
-        console.log('WebApp:', window.Telegram?.WebApp);
-        console.log('InitData:', window.Telegram?.WebApp?.initData);
+        const tg = window?.Telegram?.WebApp;
+        console.log('WebApp:', tg);
+        console.log('InitData:', tg?.initData);
 
         const response = await fetch('/api/auth', {
           method: 'POST',
@@ -32,7 +47,7 @@ export default function Home() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            initData: window.Telegram?.WebApp?.initData || '',
+            initData: tg?.initData || '',
           }),
         });
 
@@ -44,46 +59,38 @@ export default function Home() {
         }
 
         setUser(data.user);
-        window.Telegram?.WebApp?.ready();
-      } catch (error: any) {
-        setError(error.message);
+        tg?.ready?.();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+        setError(errorMessage);
         console.error('Authentication error:', error);
       }
     };
 
     authenticate();
-  }, []);
+  }, [isClient]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isFarming) {
-      interval = setInterval(() => {
-        setFarmingTime(prev => prev + 1);
-      }, 1000);
-    }
-    return () => interval && clearInterval(interval);
+    if (!isFarming) return;
+    const interval = setInterval(() => setFarmingTime(prev => prev + 1), 1000);
+    return () => clearInterval(interval);
   }, [isFarming]);
 
   const handleFarmingToggle = async () => {
+    if (!user) return;
+    
     if (isFarming) {
       try {
         const response = await fetch('/api/balance', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: user.id,
-            amount: farmingTime,
-          }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, amount: farmingTime }),
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to update balance');
-        }
+        if (!response.ok) throw new Error('Failed to update balance');
 
         const data = await response.json();
-        setUser((prev: any) => ({ ...prev, balance: data.balance }));
+        setUser(prev => prev ? { ...prev, balance: data.balance } : null);
         setFarmingTime(0);
       } catch (error) {
         console.error('Balance update error:', error);
@@ -92,13 +99,11 @@ export default function Home() {
     setIsFarming(!isFarming);
   };
 
-  if (error) {
-    return <div className="p-4 text-red-500">Error: {error}</div>;
-  }
+  if (!isClient) return <div className="p-4">Loading...</div>;
 
-  if (!user) {
-    return <div className="p-4">Loading... (WebApp Data: {window.Telegram?.WebApp?.initData || 'Not found'})</div>;
-  }
+  if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
+
+  if (!user) return <div className="p-4">Loading... (Initializing Telegram WebApp...)</div>;
 
   return (
     <div className="p-4 max-w-md mx-auto">
@@ -106,16 +111,12 @@ export default function Home() {
         <h1 className="text-2xl font-bold mb-4">Welcome, {user.firstName}!</h1>
         <div className="mb-4">
           <p className="text-lg">Balance: {user.balance}</p>
-          {isFarming && (
-            <p className="text-lg">Farming Time: {farmingTime}</p>
-          )}
+          {isFarming && <p className="text-lg">Farming Time: {farmingTime}</p>}
         </div>
         <button
           onClick={handleFarmingToggle}
           className={`w-full py-2 px-4 rounded ${
-            isFarming
-              ? 'bg-red-500 hover:bg-red-600'
-              : 'bg-green-500 hover:bg-green-600'
+            isFarming ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
           } text-white font-bold`}
         >
           {isFarming ? 'Stop Farming' : 'Start Farming'}
@@ -123,4 +124,6 @@ export default function Home() {
       </div>
     </div>
   );
-}
+};
+
+export default Home;
