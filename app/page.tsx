@@ -2,29 +2,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTelegram } from './components/TelegramProvider'
 import styles from './page.module.css'
 
 export default function Home() {
-  const [user, setUser] = useState<any>(null)
+  const { user } = useTelegram()
   const [farming, setFarming] = useState(false)
   const [counter, setCounter] = useState(0)
   const [balance, setBalance] = useState(0)
 
   useEffect(() => {
-    const initTelegram = async () => {
-      // @ts-ignore
-      const tg = window.Telegram?.WebApp
-      if (tg?.initDataUnsafe?.user) {
-        const userData = tg.initDataUnsafe.user
-        setUser(userData)
-        await fetchUserData(userData.id)
-      }
-      tg?.ready()
-      tg?.expand()
+    if (user) {
+      fetchUserData(user.id)
     }
-
-    initTelegram()
-  }, [])
+  }, [user])
 
   useEffect(() => {
     let interval: NodeJS.Timeout

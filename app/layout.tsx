@@ -1,5 +1,4 @@
-// app/layout.tsx
-import Script from 'next/script'
+import { Providers } from './providers'
 
 export default function RootLayout({
   children,
@@ -9,9 +8,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
+        <script src="https://telegram.org/js/telegram-web-app.js" async />
       </head>
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   )
 }
