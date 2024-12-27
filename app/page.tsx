@@ -16,7 +16,6 @@ declare global {
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
-  const [token, setToken] = useState<string>('');
   const [isFarming, setIsFarming] = useState(false);
   const [farmingTime, setFarmingTime] = useState(0);
   const [error, setError] = useState<string>('');
@@ -27,18 +26,13 @@ export default function Home() {
         console.log('WebApp:', window.Telegram?.WebApp);
         console.log('InitData:', window.Telegram?.WebApp?.initData);
 
-        if (!window.Telegram?.WebApp?.initData) {
-          setError('Telegram WebApp data not found');
-          return;
-        }
-
         const response = await fetch('/api/auth', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            initData: window.Telegram.WebApp.initData,
+            initData: window.Telegram?.WebApp?.initData || '',
           }),
         });
 
@@ -50,7 +44,6 @@ export default function Home() {
         }
 
         setUser(data.user);
-        setToken(data.token);
         window.Telegram?.WebApp?.ready();
       } catch (error: any) {
         setError(error.message);
@@ -78,9 +71,9 @@ export default function Home() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
+            userId: user.id,
             amount: farmingTime,
           }),
         });

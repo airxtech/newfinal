@@ -1,25 +1,15 @@
 // app/api/balance/route.ts
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET!;
 
 export async function POST(request: Request) {
   try {
-    const authorization = request.headers.get('Authorization');
-    if (!authorization) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authorization.replace('Bearer ', '');
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-
-    const { amount } = await request.json();
+    const { userId, amount } = await request.json();
 
     const user = await prisma.user.update({
-      where: { id: decoded.userId },
+      where: { id: userId },
       data: {
         balance: { increment: amount },
         lastFarmingTime: new Date(),
