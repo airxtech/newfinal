@@ -16,72 +16,50 @@ export default function Home() {
   const [user, setUser] = useState<any>(null)
   const [farming, setFarming] = useState(false)
   const [counter, setCounter] = useState(0)
-  const [balance, setBalance] = useState(0)
+  const [balance, setBalance] = useState<number | null>(null)
   const [isClient, setIsClient] = useState(false)
   const [initStatus, setInitStatus] = useState<string>('initial')
 
-  // Check if we're in the Telegram WebApp environment
-  const isTelegramWebApp = () => {
+  useEffect(() => {
+    setIsClient(true)
+    
+    // Wait for Telegram WebApp script to load
+    const waitForTelegram = () => {
+      if (window.Telegram?.WebApp) {
+        initTelegram()
+      } else {
+        setTimeout(waitForTelegram, 100)
+      }
+    }
+    
+    waitForTelegram()
+  }, [])
+
+  const initTelegram = () => {
     try {
-      const params = new URLSearchParams(window.location.hash.slice(1))
-      return params.has('tgWebAppData')
-    } catch (e) {
-      return false
+      const webApp = window.Telegram.WebApp
+      console.log('WebApp object:', webApp)
+      
+      // Initialize WebApp
+      webApp.ready()
+      webApp.expand()
+      
+      // Get user data
+      if (webApp.initDataUnsafe?.user) {
+        const userData = webApp.initDataUnsafe.user
+        console.log('User data:', userData)
+        setUser(userData)
+        setInitStatus('loaded')
+        fetchUserData(userData.id)
+      } else {
+        console.log('No user data found')
+        setInitStatus('no-user')
+      }
+    } catch (error) {
+      console.error('WebApp init error:', error)
+      setInitStatus('error')
     }
   }
-
-  useEffect(() => {
-    let mounted = true
-    setIsClient(true)
-
-    const initApp = async () => {
-      // Wait for the script to load
-      while (mounted && !window.Telegram?.WebApp) {
-        await new Promise(resolve => setTimeout(resolve, 100))
-      }
-
-      if (!mounted) return
-
-      try {
-        const webApp = window.Telegram.WebApp
-        console.log('WebApp object:', webApp)
-        setInitStatus('webapp-loaded')
-
-        // Only proceed if we're in Telegram
-        if (!isTelegramWebApp()) {
-          console.log('Not in Telegram WebApp environment')
-          setInitStatus('not-in-telegram')
-          return
-        }
-
-        webApp.ready()
-        webApp.expand()
-        setInitStatus('webapp-ready')
-
-        if (webApp.initDataUnsafe?.user) {
-          const userData = webApp.initDataUnsafe.user
-          console.log('User data:', userData)
-          if (mounted) {
-            setUser(userData)
-            setInitStatus('user-loaded')
-            fetchUserData(userData.id)
-          }
-        } else {
-          console.log('No user data available')
-          setInitStatus('no-user-data')
-        }
-      } catch (error) {
-        console.error('Init error:', error)
-        setInitStatus('error')
-      }
-    }
-
-    initApp()
-
-    return () => {
-      mounted = false
-    }
-  }, [])
 
   const fetchUserData = async (telegramId: number) => {
     try {
@@ -89,16 +67,17 @@ export default function Home() {
       
       // First try to get existing user
       const getResponse = await fetch(`/api/user?telegramId=${telegramId}`)
-      console.log('API Response:', await getResponse.clone().text())  // Added line
-      console.log('Response status:', getResponse.status)  // Added line
+      console.log('Response status:', getResponse.status)
       
+      const data = await getResponse.json()
+      console.log('API Response:', data)
+
       if (getResponse.ok) {
-        const data = await getResponse.json()
         console.log('Existing user found:', data)
         setBalance(data.balance)
         return
       }
-  
+
       // If user doesn't exist (404), create new user
       if (getResponse.status === 404) {
         console.log('User not found, creating new user')
@@ -113,24 +92,25 @@ export default function Home() {
             balance: 0
           })
         })
-  
+
         if (!createResponse.ok) {
           throw new Error('Failed to create user')
         }
-  
+
         const newUser = await createResponse.json()
         console.log('New user created:', newUser)
         setBalance(0)
       }
     } catch (error) {
       console.error('Error in fetchUserData:', error)
+      setBalance(0) // Fallback to 0 on error
     }
   }
-  
+
   const handleFarming = async () => {
     if (farming) {
       setFarming(false)
-      const newBalance = balance + counter
+      const newBalance = (balance || 0) + counter
       
       try {
         const response = await fetch('/api/user', {
@@ -144,11 +124,11 @@ export default function Home() {
             balance: newBalance
           })
         })
-  
+
         if (!response.ok) {
           throw new Error('Failed to update balance')
         }
-  
+
         const updatedUser = await response.json()
         console.log('Balance updated:', updatedUser)
         setBalance(updatedUser.balance)
@@ -173,24 +153,25 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [farming])
 
+  // SSR loading state
   if (!isClient) {
-    return <div className={styles.container}>Initializing application...</div>
+    return <div className={styles.container}>Initializing...</div>
   }
 
+  // User-friendly loading states
   if (!user) {
     return (
       <div className={styles.container}>
         <h2>Loading Mini App</h2>
-        <p>Current Status: {initStatus}</p>
+        <p>Status: {initStatus}</p>
         <div className={styles.smallText}>
-          {initStatus === 'not-in-telegram' 
-            ? 'This app can only be accessed through Telegram'
-            : 'Please wait while we initialize the app...'}
+          Please make sure you're opening this through Telegram
         </div>
       </div>
     )
   }
 
+  // Main app UI
   return (
     <div className={styles.container}>
       <h1>Farming Mini App</h1>
@@ -198,12 +179,15 @@ export default function Home() {
         <p>Name: {user.first_name} {user.last_name}</p>
         <p>Username: {user.username}</p>
         <p>Telegram ID: {user.id}</p>
-        <p>Balance: {balance}</p>
+        <p>Balance: {balance === null ? (
+          <span className={styles.loading}>Loading...</span>
+        ) : balance}</p>
         {farming && <p>Farming: +{counter}</p>}
       </div>
       <button 
         className={styles.farmButton}
         onClick={handleFarming}
+        disabled={balance === null}
       >
         {farming ? 'Stop Farming' : 'Start Farming'}
       </button>
