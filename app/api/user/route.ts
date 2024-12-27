@@ -1,15 +1,17 @@
-// app/api/user/route.ts
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
-const prisma = new PrismaClient()
+// Remove the PrismaClient instantiation line
+// const prisma = new PrismaClient()  <- Remove this line
 
 export async function POST(request: Request) {
+  console.log('POST request received')
   try {
     const body = await request.json()
-    const { telegramId, firstName, lastName, username, balance } = body
+    console.log('Request body:', body)
     
-    console.log('Received request:', { telegramId, firstName, lastName, username, balance })
+    const { telegramId, firstName, lastName, username, balance } = body
+    console.log('Parsed data:', { telegramId, firstName, lastName, username, balance })
 
     const user = await prisma.user.upsert({
       where: { 
@@ -31,47 +33,14 @@ export async function POST(request: Request) {
       }
     })
     
-    console.log('User saved/updated:', user)
+    console.log('Database response:', user)
     return NextResponse.json(user)
   } catch (error: any) {
-    console.error('Database operation failed:', error)
+    console.error('Full error object:', error)
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
     return NextResponse.json(
       { error: 'Database operation failed', details: error.message },
-      { status: 500 }
-    )
-  }
-}
-
-export async function GET(request: Request) {
-  try {
-    const url = new URL(request.url)
-    const telegramId = url.searchParams.get('telegramId')
-    
-    if (!telegramId) {
-      return NextResponse.json(
-        { error: 'Telegram ID is required' },
-        { status: 400 }
-      )
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { 
-        telegramId: Number(telegramId) 
-      }
-    })
-    
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json(user)
-  } catch (error: any) {
-    console.error('Database query failed:', error)
-    return NextResponse.json(
-      { error: 'Database query failed', details: error.message },
       { status: 500 }
     )
   }
