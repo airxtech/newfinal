@@ -2,13 +2,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 declare global {
   interface Window {
     Telegram?: {
       WebApp: {
         initData: string;
+        ready: () => void;
       };
     };
   }
@@ -19,13 +19,16 @@ export default function Home() {
   const [token, setToken] = useState<string>('');
   const [isFarming, setIsFarming] = useState(false);
   const [farmingTime, setFarmingTime] = useState(0);
-  const router = useRouter();
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
     const authenticate = async () => {
       try {
+        console.log('WebApp:', window.Telegram?.WebApp);
+        console.log('InitData:', window.Telegram?.WebApp?.initData);
+
         if (!window.Telegram?.WebApp?.initData) {
-          console.error('Telegram WebApp data not found');
+          setError('Telegram WebApp data not found');
           return;
         }
 
@@ -39,14 +42,18 @@ export default function Home() {
           }),
         });
 
+        const data = await response.json();
+        console.log('Auth response:', data);
+
         if (!response.ok) {
-          throw new Error('Authentication failed');
+          throw new Error(data.error || 'Authentication failed');
         }
 
-        const data = await response.json();
         setUser(data.user);
         setToken(data.token);
-      } catch (error) {
+        window.Telegram?.WebApp?.ready();
+      } catch (error: any) {
+        setError(error.message);
         console.error('Authentication error:', error);
       }
     };
@@ -56,23 +63,16 @@ export default function Home() {
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
     if (isFarming) {
       interval = setInterval(() => {
         setFarmingTime(prev => prev + 1);
       }, 1000);
     }
-
-    return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
+    return () => interval && clearInterval(interval);
   }, [isFarming]);
 
   const handleFarmingToggle = async () => {
     if (isFarming) {
-      // Stop farming and update balance
       try {
         const response = await fetch('/api/balance', {
           method: 'POST',
@@ -96,12 +96,15 @@ export default function Home() {
         console.error('Balance update error:', error);
       }
     }
-    
     setIsFarming(!isFarming);
   };
 
+  if (error) {
+    return <div className="p-4 text-red-500">Error: {error}</div>;
+  }
+
   if (!user) {
-    return <div className="p-4">Loading...</div>;
+    return <div className="p-4">Loading... (WebApp Data: {window.Telegram?.WebApp?.initData || 'Not found'})</div>;
   }
 
   return (
