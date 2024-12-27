@@ -85,50 +85,50 @@ export default function Home() {
 
   const fetchUserData = async (telegramId: number) => {
     try {
-      console.log('Fetching user data for ID:', telegramId) // Added line
-      // First try to get existing user data
-      const getResponse = await fetch(`/api/user?telegramId=${telegramId}`)
+      console.log('Fetching data for user:', telegramId);
+      
+      // First try to get existing user
+      const getResponse = await fetch(`/api/user?telegramId=${telegramId}`);
+      const data = await getResponse.json();
       
       if (getResponse.ok) {
-        const data = await getResponse.json()
-        console.log('API Response:', data) // Added line
-        setBalance(data.balance)
-        return
+        console.log('Existing user found:', data);
+        setBalance(data.balance);
+        return;
       }
-
-      // If user doesn't exist, create new user
-      const createResponse = await fetch('/api/user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          telegramId,
-          firstName: user?.first_name,
-          lastName: user?.last_name,
-          username: user?.username,
-          balance: 0
-        })
-      })
-
-      if (!createResponse.ok) {
-        throw new Error('Failed to create user')
+  
+      // If user doesn't exist (404), create new user
+      if (getResponse.status === 404) {
+        console.log('User not found, creating new user');
+        const createResponse = await fetch('/api/user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telegramId,
+            firstName: user?.first_name,
+            lastName: user?.last_name,
+            username: user?.username,
+            balance: 0
+          })
+        });
+  
+        if (!createResponse.ok) {
+          throw new Error('Failed to create user');
+        }
+  
+        const newUser = await createResponse.json();
+        console.log('New user created:', newUser);
+        setBalance(0);
       }
-
-      const data = await createResponse.json()
-      setBalance(data.balance)
     } catch (error) {
-      console.error('Error fetching user data:', error)
+      console.error('Error in fetchUserData:', error);
     }
   }
-
+  
   const handleFarming = async () => {
     if (farming) {
-      setFarming(false)
-      console.log('Current balance before update:', balance) // Added line
-      console.log('Counter value:', counter) // Added line
-      const newBalance = balance + counter
-      console.log('New balance to be set:', newBalance) // Added line
-      setBalance(newBalance)
-      setCounter(0)
+      setFarming(false);
+      const newBalance = balance + counter;
       
       try {
         const response = await fetch('/api/user', {
@@ -141,21 +141,23 @@ export default function Home() {
             username: user.username,
             balance: newBalance
           })
-        })
-        
+        });
+  
         if (!response.ok) {
-          throw new Error('Failed to update balance')
+          throw new Error('Failed to update balance');
         }
-
-        const data = await response.json()
-        console.log('Balance updated:', data)
+  
+        const updatedUser = await response.json();
+        console.log('Balance updated:', updatedUser);
+        setBalance(updatedUser.balance);
+        setCounter(0);
       } catch (error) {
-        console.error('Error updating balance:', error)
-        // Revert balance on error
-        setBalance(balance)
+        console.error('Error updating balance:', error);
+        // Revert the farming state on error
+        setFarming(true);
       }
     } else {
-      setFarming(true)
+      setFarming(true);
     }
   }
 
