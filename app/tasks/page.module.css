@@ -1,0 +1,153 @@
+.tasksPage {
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  
+  .header h1 {
+    font-size: 24px;
+    color: var(--tg-theme-text-color, #000000);
+  }
+  
+  .balance {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--tg-theme-button-color, #2481cc);
+  }
+  
+  .standardTasks,
+  .dailyTasks,
+  .referralSection {
+    margin-bottom: 32px;
+  }
+  
+  .standardTasks h2,
+  .dailyTasks h2,
+  .referralSection h2 {
+    font-size: 20px;
+    margin-bottom: 16px;
+    color: var(--tg-theme-text-color, #000000);
+  }
+  
+  .taskList {
+    display: grid;
+    gap: 12px;
+  }
+  
+  .taskCard {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    padding: 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  
+  .taskCard:hover:not(.completed) {
+    transform: translateY(-2px);
+  }
+  
+  .taskInfo {
+    flex: 1;
+  }
+  
+  .taskInfo h3 {
+    font-size: 16px;
+    margin-bottom: 4px;
+    color: var(--tg-theme-text-color, #000000);
+  }
+  
+  .taskInfo p {
+    font-size: 14px;
+    color: var(--tg-theme-hint-color, #999999);
+  }
+  
+  .taskReward {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--tg-theme-button-color, #2481cc);
+    font-weight: 500;
+  }
+  
+  .taskCard.completed {
+    opacity: 0.7;
+    cursor: default;
+  }
+  
+  .taskCard.completed .taskReward {
+    color: var(--tg-theme-hint-color, #999999);
+  }
+  
+  .referralSection p {
+    font-size: 14px;
+    color: var(--tg-theme-hint-color, #999999);
+    margin-bottom: 16px;
+  }
+  
+  .referralCard {
+    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    padding: 20px;
+    border-radius: 12px;
+  }
+  
+  .referralInfo {
+    margin-bottom: 20px;
+  }
+  
+  .referralInfo span {
+    display: block;
+    font-size: 14px;
+    color: var(--tg-theme-hint-color, #999999);
+    margin-bottom: 8px;
+  }
+  
+  .referralCode {
+    display: inline-block;
+    padding: 12px 20px;
+    background-color: var(--tg-theme-bg-color, #ffffff);
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--tg-theme-button-color, #2481cc);
+    cursor: pointer;
+  }
+  
+  .referralStats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  
+  .referralStats > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .referralStats span {
+    font-size: 14px;
+    color: var(--tg-theme-hint-color, #999999);
+  }
+  
+  .referralStats strong {
+    font-size: 18px;
+    color: var(--tg-theme-text-color, #000000);
+  }
+  
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 60px);
+    color: var(--tg-theme-hint-color, #999999);
+  }
