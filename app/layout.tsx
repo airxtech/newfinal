@@ -1,4 +1,11 @@
-import { Providers } from './providers'
+// app/layout.tsx
+import Script from 'next/script'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Farming Mini App',
+  description: 'Telegram Mini App for Farming',
+}
 
 export default function RootLayout({
   children,
@@ -8,11 +15,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <script src="https://telegram.org/js/telegram-web-app.js" async />
+        {/* Remove preload and add proper script tag */}
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
       </head>
-      <body>
-        <Providers>{children}</Providers>
-      </body>
+      <body>{children}</body>
     </html>
   )
 }

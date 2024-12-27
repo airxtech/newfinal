@@ -2,20 +2,45 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useTelegram } from './components/TelegramProvider'
 import styles from './page.module.css'
 
+declare global {
+  interface Window {
+    Telegram: {
+      WebApp: any;
+    }
+  }
+}
+
 export default function Home() {
-  const { user } = useTelegram()
+  const [user, setUser] = useState<any>(null)
   const [farming, setFarming] = useState(false)
   const [counter, setCounter] = useState(0)
   const [balance, setBalance] = useState(0)
+  const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
-    if (user) {
-      fetchUserData(user.id)
+    setIsClient(true)
+    
+    // Initialize Telegram WebApp
+    const webApp = window.Telegram?.WebApp
+    if (webApp) {
+      webApp.ready()
+      webApp.expand()
+
+      // Get user data
+      if (webApp.initDataUnsafe?.user) {
+        const userData = webApp.initDataUnsafe.user
+        console.log('User data:', userData)  // Debug log
+        setUser(userData)
+        fetchUserData(userData.id)
+      } else {
+        console.log('No user data available')  // Debug log
+      }
+    } else {
+      console.log('Telegram WebApp not available')  // Debug log
     }
-  }, [user])
+  }, [])
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -74,7 +99,20 @@ export default function Home() {
     }
   }
 
-  if (!user) return <div className={styles.container}>Loading...</div>
+  // Return loading state during SSR
+  if (!isClient) {
+    return <div className={styles.container}>Loading...</div>
+  }
+
+  // Show loading if Telegram WebApp is not available
+  if (!window.Telegram?.WebApp) {
+    return <div className={styles.container}>Loading Telegram Web App...</div>
+  }
+
+  // Show loading if user data is not yet available
+  if (!user) {
+    return <div className={styles.container}>Loading user data...</div>
+  }
 
   return (
     <div className={styles.container}>
