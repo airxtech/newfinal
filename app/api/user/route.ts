@@ -17,18 +17,19 @@ export async function GET(request: Request) {
       )
     }
 
-    // First try to find the user
     try {
       const user = await prisma.user.findUnique({
         where: { 
           telegramId: Number(telegramId) 
+        },
+        include: {
+          tasks: true
         }
       })
 
       console.log('[API] GET user - Found user:', user)
       
       if (!user) {
-        // If user doesn't exist, create one
         console.log('[API] GET user - User not found, creating new user')
         const newUser = await prisma.user.create({
           data: {
@@ -39,7 +40,11 @@ export async function GET(request: Request) {
             username: '',
             zoaBalance: 0,
             scratchChances: 3,
+            lastChanceReset: new Date(), // Add this field
             referralCode: `ZOA${telegramId}${Date.now().toString(36)}`.toUpperCase()
+          },
+          include: {
+            tasks: true
           }
         })
 
@@ -99,7 +104,11 @@ export async function POST(request: Request) {
           username: username || '',
           zoaBalance: zoaBalance || 0,
           scratchChances: scratchChances || 3,
+          lastChanceReset: new Date(), // Add this field
           referralCode: `ZOA${telegramId}${Date.now().toString(36)}`.toUpperCase()
+        },
+        include: {
+          tasks: true
         }
       })
 

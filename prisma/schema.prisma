@@ -16,7 +16,7 @@ model User {
   zoaBalance       Float    @default(0)
   tonBalance       Float?   // From connected wallet
   scratchChances   Int      @default(3)
-  lastChanceReset  DateTime @default(now())
+  lastChanceReset  DateTime @default(now()) // Added default value
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   referralCode     String   @unique
@@ -91,14 +91,14 @@ model Task {
 }
 
 model UserTask {
-  id        String   @id @map("_id")
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  task      Task     @relation(fields: [taskId], references: [id])
-  taskId    String
-  completed Boolean  @default(false)
-  completedAt DateTime?
-  lastCompleted DateTime? // For daily tasks
+  id             String   @id @map("_id")
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String
+  task           Task     @relation(fields: [taskId], references: [id])
+  taskId         String
+  completed      Boolean  @default(false)
+  completedAt    DateTime?
+  lastCompleted  DateTime? // For daily tasks
 
   @@unique([userId, taskId])
 }
