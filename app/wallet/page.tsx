@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react'
 import styles from './page.module.css'
 import { Wallet as WalletIcon } from 'lucide-react'
-import TonConnect, { isWalletInfoCurrentlyEmbedded, isWalletInfoCurrentlyInjected } from '@tonconnect/sdk'
+import TonConnect, { isWalletInfoRemote, WalletInfoRemote } from '@tonconnect/sdk'
 
 interface Token {
   id: string
@@ -18,48 +18,48 @@ interface Token {
   contractAddress?: string
 }
 
+let connector: TonConnect | null = null
+
 export default function WalletPage() {
   const [user, setUser] = useState<any>(null)
   const [tonBalance, setTonBalance] = useState<number | null>(null)
   const [portfolio, setPortfolio] = useState<Token[]>([])
   const [totalValue, setTotalValue] = useState<number>(0)
   const [isConnected, setIsConnected] = useState(false)
-  const [walletAddress, setWalletAddress] = useState<string | null>(null)
-  const [connector, setConnector] = useState<any>(null)
 
   useEffect(() => {
-    // Initialize TonConnect only on client side
-    const initTonConnect = async () => {
-      const connector = new TonConnect({
+    // Initialize TonConnect
+    if (!connector) {
+      connector = new TonConnect({
         manifestUrl: 'https://telegramtest-eight.vercel.app/tonconnect-manifest.json'
       })
-      setConnector(connector)
 
-      // Try to restore connection
-      await connector.restoreConnection()
-
-      // Add connection status listener
-      const unsubscribe = connector.onStatusChange(wallet => {
-        if (wallet) {
-          setIsConnected(true)
-          // For testnet, we use a dummy balance
-          const isTestnet = wallet.account.chain === '-239'
-          if (isTestnet) {
-            setTonBalance(1.0) // 1 TON for testing
-          }
-          setWalletAddress(wallet.account.address)
-        } else {
-          setIsConnected(false)
-          setTonBalance(null)
-          setWalletAddress(null)
-        }
-      })
-
-      return () => unsubscribe()
+      connector.restoreConnection()
     }
 
-    initTonConnect()
+    // Add connection status listener
+    const unsubscribe = connector.onStatusChange((wallet) => {
+      if (wallet) {
+        setIsConnected(true)
+        try {
+          const balanceNano = wallet.account.chain === '-239' // -239 is testnet, 0 is mainnet
+            ? '1000000000' // 1 TON for testing
+            : '0'
+          setTonBalance(Number(balanceNano) / 1e9)
+        } catch (e) {
+          console.error('Error getting wallet balance:', e)
+        }
+      } else {
+        setIsConnected(false)
+        setTonBalance(null)
+      }
+    })
+
     fetchUserData()
+
+    return () => {
+      unsubscribe()
+    }
   }, [])
 
   const fetchUserData = async () => {
@@ -71,7 +71,7 @@ export default function WalletPage() {
       if (response.ok) {
         const data = await response.json()
         setUser(data)
-
+        
         // Fetch user's tokens
         const tokensResponse = await fetch(`/api/tokens/user/${data.telegramId}`)
         if (tokensResponse.ok) {
@@ -87,7 +87,7 @@ export default function WalletPage() {
             price: 1,
             isListed: true
           }, ...tokensData]
-
+          
           setPortfolio(portfolio)
           // Calculate total portfolio value
           const total = portfolio.reduce((acc, token) => acc + token.value, 0)
@@ -104,48 +104,24 @@ export default function WalletPage() {
 
     try {
       const walletsList = await connector.getWallets()
+      
+      const remoteWallets = walletsList.filter(isWalletInfoRemote)
+      const tonkeeper = remoteWallets.find(wallet => wallet.appName === 'tonkeeper')
 
-      // Check if the wallet is embedded or injected
-      const embeddedWallet = walletsList.find(isWalletInfoCurrentlyEmbedded)
-      const injectedWallet = walletsList.find(isWalletInfoCurrentlyInjected)
-
-      if (embeddedWallet) {
-        // Connect to the embedded wallet
-        connector.connect({ jsBridgeKey: embeddedWallet.jsBridgeKey })
-      } else if (injectedWallet) {
-        // Connect to the injected wallet
-        connector.connect({ jsBridgeKey: injectedWallet.jsBridgeKey })
-      } else {
-        // Fallback to universal link for remote wallets
-        const tonkeeper = walletsList.find((wallet: any) => wallet.name === 'Tonkeeper')
-        if (!tonkeeper) {
-          throw new Error('Tonkeeper wallet not found')
-        }
-
-        const universalLink = connector.connect({
-          universalLink: tonkeeper.universalLink,
-          bridgeUrl: tonkeeper.bridgeUrl
-        })
-
-        // Open in Telegram's browser
-        window.Telegram.WebApp.openLink(universalLink)
+      if (!tonkeeper) {
+        throw new Error('Tonkeeper wallet not found')
       }
+
+      const universalLink = connector.connect({
+        universalLink: tonkeeper.universalLink,
+        bridgeUrl: tonkeeper.bridgeUrl
+      })
+
+      // Open the link
+      window.Telegram.WebApp.openLink(universalLink)
     } catch (error) {
       console.error('Error connecting wallet:', error)
       alert('Failed to connect wallet. Please try again.')
-    }
-  }
-
-  const disconnectWallet = async () => {
-    if (!connector) return
-
-    try {
-      await connector.disconnect()
-      setIsConnected(false)
-      setTonBalance(null)
-      setWalletAddress(null)
-    } catch (error) {
-      console.error('Error disconnecting wallet:', error)
     }
   }
 
@@ -185,12 +161,6 @@ export default function WalletPage() {
             <div className={styles.value}>
               {tonBalance !== null ? `${tonBalance.toFixed(2)} TON` : 'Loading...'}
             </div>
-            {walletAddress && (
-              <div className={styles.address}>{walletAddress}</div>
-            )}
-            <button className={styles.disconnectButton} onClick={disconnectWallet}>
-              Disconnect
-            </button>
           </div>
         )}
       </div>
@@ -218,7 +188,7 @@ export default function WalletPage() {
               </div>
 
               {token.isListed && token.contractAddress && (
-                <button
+                <button 
                   className={styles.tradeButton}
                   onClick={() => goToStonFi(token.contractAddress!)}
                 >
