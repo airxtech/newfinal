@@ -1,9 +1,11 @@
 // app/wallet/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import styles from './page.module.css'
 import { Wallet as WalletIcon } from 'lucide-react'
+import { useTonConnectUI, useTonWallet, CHAIN } from '@tonconnect/ui-react'
+import { TonProofApi } from '../lib/ton-proof-api'
 
 interface Token {
   id: string
@@ -18,15 +20,39 @@ interface Token {
 }
 
 export default function WalletPage() {
+  const wallet = useTonWallet();
+  const [tonConnectUI] = useTonConnectUI();
+  
   const [user, setUser] = useState<any>(null)
-  const [tonBalance, setTonBalance] = useState<number | null>(null)
   const [portfolio, setPortfolio] = useState<Token[]>([])
   const [totalValue, setTotalValue] = useState<number>(0)
-  const [isConnected, setIsConnected] = useState(false)
+  const [authorized, setAuthorized] = useState(false)
 
   useEffect(() => {
-    fetchUserData()
-  }, [])
+    const initializeWallet = async () => {
+      if (!wallet) {
+        TonProofApi.reset();
+        setAuthorized(false);
+        return;
+      }
+
+      // Handle proof verification if available
+      if (wallet.connectItems?.tonProof && 'proof' in wallet.connectItems.tonProof) {
+        await TonProofApi.checkProof(wallet.connectItems.tonProof.proof, wallet.account);
+      }
+
+      if (!TonProofApi.accessToken) {
+        tonConnectUI.disconnect();
+        setAuthorized(false);
+        return;
+      }
+
+      setAuthorized(true);
+      fetchUserData();
+    };
+
+    initializeWallet();
+  }, [wallet, tonConnectUI]);
 
   const fetchUserData = async () => {
     try {
@@ -65,88 +91,6 @@ export default function WalletPage() {
     }
   }
 
-  const connectWallet = () => {
-    console.log('Starting wallet connection...')
-    try {
-      const webApp = window.Telegram.WebApp
-      console.log('WebApp object:', webApp)
-      
-      // Check if WebApp exists
-      if (!webApp) {
-        const error = new Error('Telegram WebApp not found')
-        console.error(error)
-        alert('Please open this app in Telegram')
-        return
-      }
-
-      // Check if WebApp supports wallet connection
-      if (!webApp.isVersionAtLeast('6.1')) {
-        const error = new Error(`Telegram version too old: ${webApp.version}`)
-        console.error(error)
-        alert('Please update your Telegram app to use this feature')
-        return
-      }
-
-      // Log before opening wallet
-      console.log('Opening TON Wallet...')
-
-      // Use Telegram's native wallet connection with the correct method name
-      webApp.tonWallet.connect(function(result: { address: string; balance: string }) {  // Changed from openTonWallet to tonWallet.connect
-        console.log('Wallet callback received:', result)
-        
-        if (!result) {
-          console.error('No result from wallet connection')
-          return
-        }
-
-        const { address, balance } = result
-        if (address && balance) {
-          console.log('Wallet connected successfully:', { address, balance })
-          setIsConnected(true)
-          setTonBalance(Number(balance) / 1e9)
-          
-          // Update user's wallet address in database
-          if (user?.telegramId) {
-            fetch('/api/user', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                telegramId: user.telegramId,
-                tonBalance: Number(balance) / 1e9
-              })
-            }).then(response => {
-              console.log('Balance update response:', response)
-              return response.json()
-            }).then(data => {
-              console.log('Balance update successful:', data)
-            }).catch(err => {
-              console.error('Error updating wallet balance:', err)
-            })
-          }
-        } else {
-          console.error('Invalid wallet connection result:', {
-            hasAddress: !!address,
-            hasBalance: !!balance,
-            fullResult: result
-          })
-        }
-      })
-
-      // Log after opening wallet request
-      console.log('Wallet request sent')
-
-    } catch (error) {
-      // Log the full error object
-      console.error('Detailed wallet connection error:', {
-        message: (error as any)?.message,
-        name: (error as Error)?.name,
-        stack: (error as Error)?.stack,
-        fullError: error
-      })
-      alert('Failed to connect wallet. Please try again.')
-    }
-  }
-
   const formatValue = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -172,8 +116,8 @@ export default function WalletPage() {
       </div>
 
       <div className={styles.tonSection}>
-        {!isConnected ? (
-          <button className={styles.connectButton} onClick={connectWallet}>
+      {!wallet ? (
+          <button className={styles.connectButton} onClick={() => tonConnectUI.connectWallet()}>
             <WalletIcon size={20} />
             Connect TON Wallet
           </button>
@@ -181,10 +125,13 @@ export default function WalletPage() {
           <div className={styles.tonBalance}>
             <div className={styles.label}>TON Balance</div>
             <div className={styles.value}>
-              {tonBalance !== null ? `${tonBalance.toFixed(2)} TON` : 'Loading...'}
+              {wallet && 'balance' in wallet ? 
+                `${(Number(wallet.balance) / 1e9).toFixed(2)} TON` : 
+                'Loading...'}
             </div>
           </div>
         )}
+
       </div>
 
       <section className={styles.portfolio}>

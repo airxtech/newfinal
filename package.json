@@ -11,6 +11,7 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "@tonconnect/sdk": "^3.0.5",
+    "@tonconnect/ui-react": "^2.0.9",
     "@twa-dev/types": "^7.10.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.469.0",
