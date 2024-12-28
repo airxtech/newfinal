@@ -28,7 +28,6 @@ export default function WalletPage() {
     fetchUserData()
   }, [])
 
-
   const fetchUserData = async () => {
     try {
       const webApp = window.Telegram.WebApp
@@ -66,27 +65,34 @@ export default function WalletPage() {
     }
   }
 
-  const connectWallet = async () => {
+  const connectWallet = () => {  // Removed async since we're not using await
+    console.log('Starting wallet connection...')
     try {
       const webApp = window.Telegram.WebApp
+      console.log('WebApp object:', webApp)
       
       // Check if WebApp exists
       if (!webApp) {
-        console.error('Telegram WebApp not found')
+        const error = new Error('Telegram WebApp not found')
+        console.error(error)
         alert('Please open this app in Telegram')
         return
       }
 
       // Check if WebApp supports wallet connection
       if (!webApp.isVersionAtLeast('6.1')) {
-        console.error('Telegram version too old')
+        const error = new Error(`Telegram version too old: ${webApp.version}`)
+        console.error(error)
         alert('Please update your Telegram app to use this feature')
         return
       }
 
+      // Log before opening wallet
+      console.log('Opening TON Wallet...')
+
       // Use Telegram's native wallet connection
-      webApp.openTonWallet((result: { address: string; balance: string }) => {
-        console.log('Wallet connection result:', result)
+      webApp.openTonWallet(function(result: { address?: string; balance?: string }) {  // Use named function for better error tracking
+        console.log('Wallet callback received:', result)
         
         if (!result) {
           console.error('No result from wallet connection')
@@ -95,9 +101,9 @@ export default function WalletPage() {
 
         const { address, balance } = result
         if (address && balance) {
-          console.log('Wallet connected:', { address, balance })
+          console.log('Wallet connected successfully:', { address, balance })
           setIsConnected(true)
-          setTonBalance(Number(balance) / 1e9) // Convert from nanotons to TON
+          setTonBalance(Number(balance) / 1e9)
           
           // Update user's wallet address in database
           if (user?.telegramId) {
@@ -108,17 +114,35 @@ export default function WalletPage() {
                 telegramId: user.telegramId,
                 tonBalance: Number(balance) / 1e9
               })
+            }).then(response => {
+              console.log('Balance update response:', response)
+              return response.json()
+            }).then(data => {
+              console.log('Balance update successful:', data)
             }).catch(err => {
               console.error('Error updating wallet balance:', err)
             })
           }
         } else {
-          console.error('Invalid wallet connection result:', result)
+          console.error('Invalid wallet connection result:', {
+            hasAddress: !!address,
+            hasBalance: !!balance,
+            fullResult: result
+          })
         }
       }, false)
 
+      // Log after opening wallet request
+      console.log('Wallet request sent')
+
     } catch (error) {
-      console.error('Error connecting wallet:', error)
+      // Log the full error object
+      console.error('Detailed wallet connection error:', {
+        message: (error as Error)?.message,
+        name: (error as Error)?.name,
+        stack: (error as Error)?.stack,
+        fullError: error
+      })
       alert('Failed to connect wallet. Please try again.')
     }
   }
