@@ -1,3 +1,4 @@
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,26 +9,24 @@ datasource db {
 }
 
 model User {
-  id              String    @id @map("_id")
-  telegramId      Int      @unique
-  firstName       String
-  lastName        String?
-  username        String?
-  zoaBalance      Float    @default(0)
-  tonBalance      Float?
-  scratchChances  Int      @default(3)
-  lastChanceReset DateTime @default(now())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  referralCode    String   @unique
-  referredBy      String?
-  referralCount   Int      @default(0)
-  tasks           UserTask[]
-  tokens          UserToken[]
-  transactions    Transaction[]
-  createdTokens   Token[]  @relation("TokenCreator")
-  isPremium       Boolean  @default(false)
-  allowsPm        Boolean  @default(false)
+  id               String    @id @map("_id")
+  telegramId       Int      @unique
+  firstName        String
+  lastName         String?
+  username         String?
+  zoaBalance       Float    @default(0)
+  tonBalance       Float?   // From connected wallet
+  scratchChances   Int      @default(3)
+  lastChanceReset  DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  referralCode     String   @unique
+  referredBy       String?
+  referralCount    Int      @default(0)
+  tasks            UserTask[]
+  tokens           UserToken[]
+  transactions     Transaction[]
+  createdTokens    Token[]  @relation("TokenCreator")
 }
 
 model Token {

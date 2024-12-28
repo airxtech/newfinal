@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import styles from './page.module.css'
 import { Wallet as WalletIcon } from 'lucide-react'
+import TonConnect, { isWalletInfoRemote, WalletInfoRemote } from '@tonconnect/sdk'
 
 interface Token {
   id: string
@@ -17,6 +18,8 @@ interface Token {
   contractAddress?: string
 }
 
+let connector: TonConnect | null = null
+
 export default function WalletPage() {
   const [user, setUser] = useState<any>(null)
   const [tonBalance, setTonBalance] = useState<number | null>(null)
@@ -25,7 +28,38 @@ export default function WalletPage() {
   const [isConnected, setIsConnected] = useState(false)
 
   useEffect(() => {
+    // Initialize TonConnect
+    if (!connector) {
+      connector = new TonConnect({
+        manifestUrl: 'https://telegramtest-eight.vercel.app/tonconnect-manifest.json'
+      })
+
+      connector.restoreConnection()
+    }
+
+    // Add connection status listener
+    const unsubscribe = connector.onStatusChange((wallet) => {
+      if (wallet) {
+        setIsConnected(true)
+        try {
+          const balanceNano = wallet.account.chain === '-239' // -239 is testnet, 0 is mainnet
+            ? '1000000000' // 1 TON for testing
+            : '0'
+          setTonBalance(Number(balanceNano) / 1e9)
+        } catch (e) {
+          console.error('Error getting wallet balance:', e)
+        }
+      } else {
+        setIsConnected(false)
+        setTonBalance(null)
+      }
+    })
+
     fetchUserData()
+
+    return () => {
+      unsubscribe()
+    }
   }, [])
 
   const fetchUserData = async () => {
@@ -66,23 +100,25 @@ export default function WalletPage() {
   }
 
   const connectWallet = async () => {
+    if (!connector) return
+
     try {
-      const webApp = window.Telegram.WebApp
+      const walletsList = await connector.getWallets()
       
-      // Check if WebApp supports wallet connection
-      if (!webApp.isVersionAtLeast('6.1')) {
-        alert('Please update your Telegram app to use this feature')
-        return
+      const remoteWallets = walletsList.filter(isWalletInfoRemote)
+      const tonkeeper = remoteWallets.find(wallet => wallet.appName === 'tonkeeper')
+
+      if (!tonkeeper) {
+        throw new Error('Tonkeeper wallet not found')
       }
 
-      // Open TON Connect using Telegram's native API
-      webApp.openTonWallet(({ address, balance }: { address: string; balance: number }) => {
-        if (address && balance) {
-          setIsConnected(true)
-          setTonBalance(Number(balance) / 1e9) // Convert from nanotons to TON
-        }
-      }, false)
+      const universalLink = connector.connect({
+        universalLink: tonkeeper.universalLink,
+        bridgeUrl: tonkeeper.bridgeUrl
+      })
 
+      // Open the link
+      window.Telegram.WebApp.openLink(universalLink)
     } catch (error) {
       console.error('Error connecting wallet:', error)
       alert('Failed to connect wallet. Please try again.')
