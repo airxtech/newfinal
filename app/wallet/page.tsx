@@ -70,33 +70,50 @@ export default function WalletPage() {
     try {
       const webApp = window.Telegram.WebApp
       
+      // Check if WebApp exists
+      if (!webApp) {
+        console.error('Telegram WebApp not found')
+        alert('Please open this app in Telegram')
+        return
+      }
+
       // Check if WebApp supports wallet connection
       if (!webApp.isVersionAtLeast('6.1')) {
+        console.error('Telegram version too old')
         alert('Please update your Telegram app to use this feature')
         return
       }
 
       // Use Telegram's native wallet connection
-      webApp.openTonWallet(async ({ address, balance }: { address: string; balance: string }) => {
+      webApp.openTonWallet((result: { address: string; balance: string }) => {
+        console.log('Wallet connection result:', result)
+        
+        if (!result) {
+          console.error('No result from wallet connection')
+          return
+        }
+
+        const { address, balance } = result
         if (address && balance) {
+          console.log('Wallet connected:', { address, balance })
           setIsConnected(true)
           setTonBalance(Number(balance) / 1e9) // Convert from nanotons to TON
           
           // Update user's wallet address in database
           if (user?.telegramId) {
-            try {
-              await fetch('/api/user', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  telegramId: user.telegramId,
-                  tonBalance: Number(balance) / 1e9
-                })
+            fetch('/api/user', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                telegramId: user.telegramId,
+                tonBalance: Number(balance) / 1e9
               })
-            } catch (error) {
-              console.error('Error updating wallet balance:', error)
-            }
+            }).catch(err => {
+              console.error('Error updating wallet balance:', err)
+            })
           }
+        } else {
+          console.error('Invalid wallet connection result:', result)
         }
       }, false)
 
