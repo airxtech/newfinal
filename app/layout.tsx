@@ -3,6 +3,7 @@ import AppLayout from './components/layout/AppLayout'
 import './globals.css'
 import { TonConnectUIProvider, THEME } from '@tonconnect/ui-react'
 
+
 export default function RootLayout({
   children,
 }: {
@@ -43,12 +44,12 @@ export default function RootLayout({
           ]
         }}
         actionsConfiguration={{
-          twaReturnUrl: 'https://t.me/your_bot_username/start'  // Replace with your bot's username
+          twaReturnUrl: 'https://t.me/v2_zoa_bot_/start'  // Replace with your bot's username
         }}
       >
-        <body>
-          <AppLayout>{children}</AppLayout>
-        </body>
+      <body>
+        <AppLayout>{children}</AppLayout>
+      </body>
       </TonConnectUIProvider>
     </html>
   )
