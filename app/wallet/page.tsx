@@ -1,9 +1,10 @@
+// app/wallet/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
 import styles from './page.module.css'
 import { Wallet as WalletIcon } from 'lucide-react'
-import TonConnect from '@tonconnect/sdk'
+import TonConnect, { isWalletInfoCurrentlyEmbedded, isWalletInfoCurrentlyInjected } from '@tonconnect/sdk'
 
 interface Token {
   id: string
@@ -104,19 +105,31 @@ export default function WalletPage() {
     try {
       const walletsList = await connector.getWallets()
 
-      // For TON wallets
-      const tonkeeper = walletsList.find((wallet: any) => wallet.name === 'Tonkeeper')
-      if (!tonkeeper) {
-        throw new Error('Tonkeeper wallet not found')
+      // Check if the wallet is embedded or injected
+      const embeddedWallet = walletsList.find(isWalletInfoCurrentlyEmbedded)
+      const injectedWallet = walletsList.find(isWalletInfoCurrentlyInjected)
+
+      if (embeddedWallet) {
+        // Connect to the embedded wallet
+        connector.connect({ jsBridgeKey: embeddedWallet.jsBridgeKey })
+      } else if (injectedWallet) {
+        // Connect to the injected wallet
+        connector.connect({ jsBridgeKey: injectedWallet.jsBridgeKey })
+      } else {
+        // Fallback to universal link for remote wallets
+        const tonkeeper = walletsList.find((wallet: any) => wallet.name === 'Tonkeeper')
+        if (!tonkeeper) {
+          throw new Error('Tonkeeper wallet not found')
+        }
+
+        const universalLink = connector.connect({
+          universalLink: tonkeeper.universalLink,
+          bridgeUrl: tonkeeper.bridgeUrl
+        })
+
+        // Open in Telegram's browser
+        window.Telegram.WebApp.openLink(universalLink)
       }
-
-      const universalLink = connector.connect({
-        universalLink: tonkeeper.universalLink,
-        bridgeUrl: tonkeeper.bridgeUrl
-      })
-
-      // Open in Telegram's browser
-      window.Telegram.WebApp.openLink(universalLink)
     } catch (error) {
       console.error('Error connecting wallet:', error)
       alert('Failed to connect wallet. Please try again.')
