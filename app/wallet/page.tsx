@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import styles from './page.module.css'
-import { Wallet as WalletIcon, ExternalLink } from 'lucide-react'
+import { Wallet as WalletIcon } from 'lucide-react'
 
 interface Token {
   id: string
@@ -75,13 +75,14 @@ export default function WalletPage() {
         return
       }
 
-      // Open TON Connect
-      webApp.openTonWallet(async ({ address, balance }: { address: string; balance: string }) => {
+      // Open TON Connect using Telegram's native API
+      webApp.openTonWallet(({ address, balance }: { address: string; balance: number }) => {
         if (address && balance) {
           setIsConnected(true)
           setTonBalance(Number(balance) / 1e9) // Convert from nanotons to TON
         }
       }, false)
+
     } catch (error) {
       console.error('Error connecting wallet:', error)
       alert('Failed to connect wallet. Please try again.')
@@ -96,8 +97,7 @@ export default function WalletPage() {
   }
 
   const goToStonFi = (contractAddress: string) => {
-    const webApp = window.Telegram.WebApp
-    webApp.openLink(`https://app.ston.fi/swap?token=${contractAddress}`)
+    window.Telegram.WebApp.openLink(`https://app.ston.fi/swap?token=${contractAddress}`)
   }
 
   if (!user) {
@@ -157,7 +157,6 @@ export default function WalletPage() {
                   onClick={() => goToStonFi(token.contractAddress!)}
                 >
                   Trade on STON.fi
-                  <ExternalLink size={16} />
                 </button>
               )}
             </div>

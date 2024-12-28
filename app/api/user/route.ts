@@ -6,8 +6,10 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const telegramId = searchParams.get('telegramId')
+    const userData = searchParams.get('userData')
     
     console.log('[API] GET user - telegramId:', telegramId)
+    console.log('[API] GET user - userData:', userData)
 
     if (!telegramId) {
       console.log('[API] GET user - No telegramId provided')
@@ -18,12 +20,12 @@ export async function GET(request: Request) {
     }
 
     try {
+      // Parse user data if provided
+      const parsedUserData = userData ? JSON.parse(userData) : null
+
       const user = await prisma.user.findUnique({
         where: { 
           telegramId: Number(telegramId) 
-        },
-        include: {
-          tasks: true
         }
       })
 
@@ -35,21 +37,35 @@ export async function GET(request: Request) {
           data: {
             id: telegramId.toString(),
             telegramId: Number(telegramId),
-            firstName: 'Anonymous',
-            lastName: '',
-            username: '',
+            firstName: parsedUserData?.first_name || 'Anonymous',
+            lastName: parsedUserData?.last_name || '',
+            username: parsedUserData?.username || '',
+            isPremium: parsedUserData?.is_premium || false,
+            allowsPm: parsedUserData?.allows_write_to_pm || false,
             zoaBalance: 0,
             scratchChances: 3,
-            lastChanceReset: new Date(), // Add this field
+            lastChanceReset: new Date(),
             referralCode: `ZOA${telegramId}${Date.now().toString(36)}`.toUpperCase()
-          },
-          include: {
-            tasks: true
           }
         })
 
         console.log('[API] GET user - Created new user:', newUser)
         return NextResponse.json(newUser)
+      }
+
+      // Update existing user's Telegram data if provided
+      if (parsedUserData) {
+        const updatedUser = await prisma.user.update({
+          where: { telegramId: Number(telegramId) },
+          data: {
+            firstName: parsedUserData.first_name,
+            lastName: parsedUserData.last_name || '',
+            username: parsedUserData.username || '',
+            isPremium: parsedUserData.is_premium || false,
+            allowsPm: parsedUserData.allows_write_to_pm || false
+          }
+        })
+        return NextResponse.json(updatedUser)
       }
 
       return NextResponse.json(user)
@@ -62,67 +78,6 @@ export async function GET(request: Request) {
     }
   } catch (error: any) {
     console.error('[API] GET user - Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
-      { status: 500 }
-    )
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const body = await request.json()
-    console.log('[API] POST user - Request body:', body)
-    
-    const { telegramId, firstName, lastName, username, zoaBalance, scratchChances } = body
-
-    if (!telegramId) {
-      console.log('[API] POST user - No telegramId provided')
-      return NextResponse.json(
-        { error: 'Telegram ID is required' },
-        { status: 400 }
-      )
-    }
-
-    try {
-      const user = await prisma.user.upsert({
-        where: { 
-          telegramId: Number(telegramId) 
-        },
-        update: { 
-          ...(firstName && { firstName }),
-          ...(lastName !== undefined && { lastName }),
-          ...(username !== undefined && { username }),
-          ...(zoaBalance !== undefined && { zoaBalance }),
-          ...(scratchChances !== undefined && { scratchChances })
-        },
-        create: {
-          id: telegramId.toString(),
-          telegramId: Number(telegramId),
-          firstName: firstName || 'Anonymous',
-          lastName: lastName || '',
-          username: username || '',
-          zoaBalance: zoaBalance || 0,
-          scratchChances: scratchChances || 3,
-          lastChanceReset: new Date(), // Add this field
-          referralCode: `ZOA${telegramId}${Date.now().toString(36)}`.toUpperCase()
-        },
-        include: {
-          tasks: true
-        }
-      })
-
-      console.log('[API] POST user - Upserted user:', user)
-      return NextResponse.json(user)
-    } catch (dbError: any) {
-      console.error('[API] POST user - Database error:', dbError)
-      return NextResponse.json(
-        { error: 'Database operation failed', details: dbError.message },
-        { status: 500 }
-      )
-    }
-  } catch (error: any) {
-    console.error('[API] POST user - Unexpected error:', error)
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }
