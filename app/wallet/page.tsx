@@ -65,7 +65,7 @@ export default function WalletPage() {
     }
   }
 
-  const connectWallet = () => {  // Removed async since we're not using await
+  const connectWallet = () => {
     console.log('Starting wallet connection...')
     try {
       const webApp = window.Telegram.WebApp
@@ -90,8 +90,8 @@ export default function WalletPage() {
       // Log before opening wallet
       console.log('Opening TON Wallet...')
 
-      // Use Telegram's native wallet connection
-      webApp.openTonWallet(function(result: { address?: string; balance?: string }) {  // Use named function for better error tracking
+      // Use Telegram's native wallet connection with the correct method name
+      webApp.tonWallet.connect(function(result: { address: string; balance: string }) {  // Changed from openTonWallet to tonWallet.connect
         console.log('Wallet callback received:', result)
         
         if (!result) {
@@ -130,7 +130,7 @@ export default function WalletPage() {
             fullResult: result
           })
         }
-      }, false)
+      })
 
       // Log after opening wallet request
       console.log('Wallet request sent')
@@ -138,7 +138,7 @@ export default function WalletPage() {
     } catch (error) {
       // Log the full error object
       console.error('Detailed wallet connection error:', {
-        message: (error as Error)?.message,
+        message: (error as any)?.message,
         name: (error as Error)?.name,
         stack: (error as Error)?.stack,
         fullError: error
