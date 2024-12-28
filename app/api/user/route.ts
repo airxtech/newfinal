@@ -47,7 +47,24 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log('Request body:', body);
     
-    const { telegramId, firstName, lastName, username, zoaBalance, scratchChances } = body;
+    const { 
+      telegramId, 
+      firstName, 
+      lastName, 
+      username, 
+      zoaBalance, 
+      scratchChances,
+      walletAddress,
+      tonBalance 
+    } = body;
+
+    // Validate required fields
+    if (!telegramId) {
+      return NextResponse.json(
+        { error: 'Telegram ID is required' },
+        { status: 400 }
+      );
+    }
 
     const user = await prisma.user.upsert({
       where: { 
@@ -57,8 +74,13 @@ export async function POST(request: Request) {
         firstName,
         lastName,
         username,
-        zoaBalance: zoaBalance || 0,
-        ...(scratchChances !== undefined && { scratchChances })
+        zoaBalance: zoaBalance || undefined,
+        ...(scratchChances !== undefined && { scratchChances }),
+        ...(walletAddress && { 
+          walletAddress,
+          lastConnected: new Date() 
+        }),
+        ...(tonBalance !== undefined && { tonBalance })
       },
       create: {
         id: telegramId.toString(),
@@ -68,7 +90,12 @@ export async function POST(request: Request) {
         username: username || '',
         zoaBalance: zoaBalance || 0,
         scratchChances: scratchChances || 3,
-        referralCode: `ZOA${telegramId}${Date.now().toString(36)}`.toUpperCase()
+        referralCode: `ZOA${telegramId}${Date.now().toString(36)}`.toUpperCase(),
+        ...(walletAddress && { 
+          walletAddress,
+          lastConnected: new Date() 
+        }),
+        ...(tonBalance !== undefined && { tonBalance })
       }
     });
     

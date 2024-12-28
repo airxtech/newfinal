@@ -16,6 +16,8 @@ model User {
   username         String?
   zoaBalance       Float    @default(0)
   tonBalance       Float?   // From connected wallet
+  walletAddress    String?  // TON wallet address
+  lastConnected    DateTime? // Last wallet connection timestamp
   scratchChances   Int      @default(3)
   lastChanceReset  DateTime @default(now())
   createdAt        DateTime @default(now())
