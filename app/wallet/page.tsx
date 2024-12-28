@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import styles from './page.module.css'
 import { Wallet as WalletIcon } from 'lucide-react'
+import TonConnect from '@tonconnect/sdk'
 
 interface Token {
   id: string
@@ -28,7 +29,6 @@ export default function WalletPage() {
   useEffect(() => {
     // Initialize TonConnect only on client side
     const initTonConnect = async () => {
-      const { TonConnect } = await import('@tonconnect/sdk')
       const connector = new TonConnect({
         manifestUrl: 'https://telegramtest-eight.vercel.app/tonconnect-manifest.json'
       })
@@ -36,9 +36,9 @@ export default function WalletPage() {
 
       // Try to restore connection
       await connector.restoreConnection()
-      
+
       // Add connection status listener
-      connector.onStatusChange(wallet => {
+      const unsubscribe = connector.onStatusChange(wallet => {
         if (wallet) {
           setIsConnected(true)
           // For testnet, we use a dummy balance
@@ -53,6 +53,8 @@ export default function WalletPage() {
           setWalletAddress(null)
         }
       })
+
+      return () => unsubscribe()
     }
 
     initTonConnect()
@@ -68,7 +70,7 @@ export default function WalletPage() {
       if (response.ok) {
         const data = await response.json()
         setUser(data)
-        
+
         // Fetch user's tokens
         const tokensResponse = await fetch(`/api/tokens/user/${data.telegramId}`)
         if (tokensResponse.ok) {
@@ -84,7 +86,7 @@ export default function WalletPage() {
             price: 1,
             isListed: true
           }, ...tokensData]
-          
+
           setPortfolio(portfolio)
           // Calculate total portfolio value
           const total = portfolio.reduce((acc, token) => acc + token.value, 0)
@@ -101,9 +103,9 @@ export default function WalletPage() {
 
     try {
       const walletsList = await connector.getWallets()
-      
+
       // For TON wallets
-      const tonkeeper = walletsList.find((wallet: any) => wallet.appName === 'tonkeeper')
+      const tonkeeper = walletsList.find((wallet: any) => wallet.name === 'Tonkeeper')
       if (!tonkeeper) {
         throw new Error('Tonkeeper wallet not found')
       }
@@ -123,7 +125,7 @@ export default function WalletPage() {
 
   const disconnectWallet = async () => {
     if (!connector) return
-    
+
     try {
       await connector.disconnect()
       setIsConnected(false)
@@ -203,7 +205,7 @@ export default function WalletPage() {
               </div>
 
               {token.isListed && token.contractAddress && (
-                <button 
+                <button
                   className={styles.tradeButton}
                   onClick={() => goToStonFi(token.contractAddress!)}
                 >
