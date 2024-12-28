@@ -1,71 +1,48 @@
-// frontend/src/components/shared/TransactionStrip.tsx
-"use client";
+// app/components/shared/TransactionStrip.tsx
+'use client'
 
-import React from 'react';
+import React from 'react'
+import styles from './TransactionStrip.module.css'
 
 export interface Transaction {
-  wallet: string;
-  type: 'bought' | 'sold' | 'created';
-  amount?: number;
-  tokenLogo: string;
-  ticker: string;
+  wallet: string
+  type: 'bought' | 'sold' | 'created'
+  amount?: number
+  tokenLogo: string
+  ticker: string
 }
 
 const TransactionStrip = () => {
   return (
-    <div className="bg-zinc-900/50 rounded-lg p-2 overflow-hidden relative">
-      <style jsx>{`
-        @keyframes marquee {
-          0% { transform: translateX(100%); }
-          100% { transform: translateX(-100%); }
-        }
-        .animate-marquee {
-          animation: marquee 7.5s linear infinite;
-        }
-      `}</style>
-
-      <div className="flex animate-marquee whitespace-nowrap">
-        {/* Duplicate the items for seamless loop */}
+    <div className={styles.strip}>
+      <div className={styles.marquee}>
+        {/* Duplicate the transactions for seamless loop */}
         {[...Array(2)].map((_, outerIndex) => (
-          <React.Fragment key={outerIndex}>
-            <div className="inline-flex items-center">
-              <span className="inline-flex items-center mx-4">
-                <span className="text-emerald-400">0x1234...567</span>
-                &nbsp;
-                <span className="text-zinc-300">bought</span>
-                &nbsp;
-                <span>$1,500 of</span>
-                &nbsp;
-                <span className="mx-1">🚀</span>
-                <span className="text-yellow-500">PEPE</span>
-                <span className="mx-8">|</span>
-              </span>
-              <span className="inline-flex items-center mx-4">
-                <span className="text-emerald-400">0x8901...234</span>
-                &nbsp;
-                <span className="text-zinc-300">sold</span>
-                &nbsp;
-                <span>$2,300 of</span>
-                &nbsp;
-                <span className="mx-1">🌙</span>
-                <span className="text-yellow-500">MOON</span>
-                <span className="mx-8">|</span>
-              </span>
-              <span className="inline-flex items-center mx-4">
-                <span className="text-emerald-400">0x5678...901</span>
-                &nbsp;
-                <span className="text-zinc-300">created</span>
-                &nbsp;
-                <span className="mx-1">🔥</span>
-                <span className="text-yellow-500">DOGE</span>
-                <span className="mx-8">|</span>
-              </span>
+          <div key={outerIndex} className={styles.transactions}>
+            <div className={styles.transaction}>
+              <span className={styles.address}>0x1234...567</span>
+              <span className={styles.type}>bought</span>
+              <span className={styles.amount}>$1,500 of</span>
+              <span className={styles.token}>🚀 PEPE</span>
             </div>
-          </React.Fragment>
+
+            <div className={styles.transaction}>
+              <span className={styles.address}>0x8901...234</span>
+              <span className={styles.type}>sold</span>
+              <span className={styles.amount}>$2,300 of</span>
+              <span className={styles.token}>🌙 MOON</span>
+            </div>
+
+            <div className={styles.transaction}>
+              <span className={styles.address}>0x5678...901</span>
+              <span className={styles.type}>created</span>
+              <span className={styles.token}>🔥 DOGE</span>
+            </div>
+          </div>
         ))}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default TransactionStrip;
+export default TransactionStrip

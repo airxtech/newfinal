@@ -68,19 +68,23 @@ export default function WalletPage() {
   const connectWallet = async () => {
     try {
       const webApp = window.Telegram.WebApp
-      // Request wallet connection through Telegram WebApp
-      const result = await webApp.connectWallet()
-      if (result) {
-        setIsConnected(true)
-        // Fetch TON balance
-        const tonResponse = await fetch(`/api/wallet/balance?address=${result.address}`)
-        if (tonResponse.ok) {
-          const { balance } = await tonResponse.json()
-          setTonBalance(balance)
-        }
+      
+      // Check if WebApp supports wallet connection
+      if (!webApp.isVersionAtLeast('6.1')) {
+        alert('Please update your Telegram app to use this feature')
+        return
       }
+
+      // Open TON Connect
+      webApp.openTonWallet(async ({ address, balance }: { address: string; balance: string }) => {
+        if (address && balance) {
+          setIsConnected(true)
+          setTonBalance(Number(balance) / 1e9) // Convert from nanotons to TON
+        }
+      }, false)
     } catch (error) {
       console.error('Error connecting wallet:', error)
+      alert('Failed to connect wallet. Please try again.')
     }
   }
 
