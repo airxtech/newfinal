@@ -1,14 +1,8 @@
-// app/wallet/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
 import styles from './page.module.css'
 import { Wallet as WalletIcon } from 'lucide-react'
-import TonConnect, { 
-  isWalletInfoRemote, 
-  WalletInfoRemote,
-  toUserFriendlyAddress
-} from '@tonconnect/sdk'
 
 interface Token {
   id: string
@@ -22,11 +16,6 @@ interface Token {
   contractAddress?: string
 }
 
-// Create a singleton connector instance
-const connector = new TonConnect({
-  manifestUrl: 'https://telegramtest-eight.vercel.app/tonconnect-manifest.json'
-})
-
 export default function WalletPage() {
   const [user, setUser] = useState<any>(null)
   const [tonBalance, setTonBalance] = useState<number | null>(null)
@@ -34,46 +23,40 @@ export default function WalletPage() {
   const [totalValue, setTotalValue] = useState<number>(0)
   const [isConnected, setIsConnected] = useState(false)
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
+  const [connector, setConnector] = useState<any>(null)
 
   useEffect(() => {
-    // Restore previous connection
-    const init = async () => {
-      try {
-        // Try to restore the connection
-        await connector.restoreConnection()
+    // Initialize TonConnect only on client side
+    const initTonConnect = async () => {
+      const { TonConnect } = await import('@tonconnect/sdk')
+      const connector = new TonConnect({
+        manifestUrl: 'https://telegramtest-eight.vercel.app/tonconnect-manifest.json'
+      })
+      setConnector(connector)
 
-        // Add connection status listener
-        const unsubscribe = connector.onStatusChange(wallet => {
-          if (wallet) {
-            setIsConnected(true)
-            // Convert raw address to user-friendly format
-            const address = toUserFriendlyAddress(wallet.account.address)
-            setWalletAddress(address)
-
-            // Get chain and check if testnet
-            const isTestnet = wallet.account.chain === '-239'
-            if (isTestnet) {
-              setTonBalance(1.0) // 1 TON for testing
-            }
-          } else {
-            setIsConnected(false)
-            setTonBalance(null)
-            setWalletAddress(null)
+      // Try to restore connection
+      await connector.restoreConnection()
+      
+      // Add connection status listener
+      connector.onStatusChange(wallet => {
+        if (wallet) {
+          setIsConnected(true)
+          // For testnet, we use a dummy balance
+          const isTestnet = wallet.account.chain === '-239'
+          if (isTestnet) {
+            setTonBalance(1.0) // 1 TON for testing
           }
-        })
-
-        // Load initial user data
-        fetchUserData()
-
-        return () => {
-          unsubscribe()
+          setWalletAddress(wallet.account.address)
+        } else {
+          setIsConnected(false)
+          setTonBalance(null)
+          setWalletAddress(null)
         }
-      } catch (e) {
-        console.error('Error initializing wallet:', e)
-      }
+      })
     }
 
-    init()
+    initTonConnect()
+    fetchUserData()
   }, [])
 
   const fetchUserData = async () => {
@@ -114,18 +97,17 @@ export default function WalletPage() {
   }
 
   const connectWallet = async () => {
+    if (!connector) return
+
     try {
-      // Get list of available wallets
       const walletsList = await connector.getWallets()
-      const remoteWallets = walletsList.filter(isWalletInfoRemote)
       
-      // Get Tonkeeper wallet
-      const tonkeeper = remoteWallets.find(wallet => wallet.appName === 'tonkeeper')
+      // For TON wallets
+      const tonkeeper = walletsList.find((wallet: any) => wallet.appName === 'tonkeeper')
       if (!tonkeeper) {
         throw new Error('Tonkeeper wallet not found')
       }
 
-      // Generate universal link and open it
       const universalLink = connector.connect({
         universalLink: tonkeeper.universalLink,
         bridgeUrl: tonkeeper.bridgeUrl
@@ -133,7 +115,6 @@ export default function WalletPage() {
 
       // Open in Telegram's browser
       window.Telegram.WebApp.openLink(universalLink)
-
     } catch (error) {
       console.error('Error connecting wallet:', error)
       alert('Failed to connect wallet. Please try again.')
@@ -141,6 +122,8 @@ export default function WalletPage() {
   }
 
   const disconnectWallet = async () => {
+    if (!connector) return
+    
     try {
       await connector.disconnect()
       setIsConnected(false)
@@ -188,9 +171,7 @@ export default function WalletPage() {
               {tonBalance !== null ? `${tonBalance.toFixed(2)} TON` : 'Loading...'}
             </div>
             {walletAddress && (
-              <div className={styles.address}>
-                {walletAddress}
-              </div>
+              <div className={styles.address}>{walletAddress}</div>
             )}
             <button className={styles.disconnectButton} onClick={disconnectWallet}>
               Disconnect
