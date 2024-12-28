@@ -1,6 +1,5 @@
 // app/layout.tsx
-'use client'
-
+import AppLayout from './components/layout/AppLayout'
 import './globals.css'
 import { TonConnectUIProvider, THEME } from '@tonconnect/ui-react'
 
@@ -47,7 +46,9 @@ export default function RootLayout({
           twaReturnUrl: 'https://t.me/your_bot_username/start'  // Replace with your bot's username
         }}
       >
-        <body>{children}</body>
+        <body>
+          <AppLayout>{children}</AppLayout>
+        </body>
       </TonConnectUIProvider>
     </html>
   )
