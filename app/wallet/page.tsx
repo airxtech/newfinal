@@ -100,25 +100,24 @@ export default function WalletPage() {
   }
 
   const connectWallet = async () => {
-    if (!connector) return
-
     try {
-      const walletsList = await connector.getWallets()
-      
-      const remoteWallets = walletsList.filter(isWalletInfoRemote)
-      const tonkeeper = remoteWallets.find(wallet => wallet.appName === 'tonkeeper')
+      const webApp = window.Telegram.WebApp
 
-      if (!tonkeeper) {
-        throw new Error('Tonkeeper wallet not found')
+      // Check if WebApp supports wallet connection
+      if (!webApp.isVersionAtLeast('6.1')) {
+        alert('Please update your Telegram app to use this feature')
+        return
       }
 
-      const universalLink = connector.connect({
-        universalLink: tonkeeper.universalLink,
-        bridgeUrl: tonkeeper.bridgeUrl
+      // Open the TON wallet connection using Telegram's native API
+      webApp.openTonWallet(({ address, balance }: { address: string; balance: string }) => {
+        if (address && balance) {
+          setIsConnected(true)
+          // Convert balance from nano TON to TON
+          const balanceInTon = Number(balance) / 1e9
+          setTonBalance(balanceInTon)
+        }
       })
-
-      // Open the link
-      window.Telegram.WebApp.openLink(universalLink)
     } catch (error) {
       console.error('Error connecting wallet:', error)
       alert('Failed to connect wallet. Please try again.')
