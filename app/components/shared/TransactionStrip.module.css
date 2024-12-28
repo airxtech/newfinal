@@ -1,0 +1,56 @@
+.strip {
+    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    border-radius: 8px;
+    padding: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .marquee {
+    display: flex;
+    white-space: nowrap;
+    animation: scroll 30s linear infinite;
+  }
+  
+  @keyframes scroll {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+  
+  .transactions {
+    display: flex;
+    gap: 24px;
+    padding-right: 24px;
+  }
+  
+  .transaction {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--tg-theme-text-color, #000000);
+  }
+  
+  .address {
+    color: var(--tg-theme-button-color, #2481cc);
+    font-weight: 500;
+  }
+  
+  .type {
+    color: var(--tg-theme-hint-color, #999999);
+  }
+  
+  .amount {
+    color: var(--tg-theme-text-color, #000000);
+  }
+  
+  .token {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--tg-theme-button-color, #2481cc);
+    font-weight: 500;
+  }
