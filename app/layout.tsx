@@ -1,8 +1,10 @@
 // app/layout.tsx
-import AppLayout from './components/layout/AppLayout'
-import './globals.css'
-import { TonConnectUIProvider, THEME } from '@tonconnect/ui-react'
+'use client'
 
+import './globals.css'
+import { TonConnectUIProvider } from '@tonconnect/ui-react'
+import AppLayout from './components/layout/AppLayout'
+import React from 'react'
 
 export default function RootLayout({
   children,
@@ -20,7 +22,6 @@ export default function RootLayout({
       <body>
         <TonConnectUIProvider 
           manifestUrl="https://telegramtest-eight.vercel.app/tonconnect-manifest.json"
-          uiPreferences={{ theme: THEME.DARK }}
           walletsListConfiguration={{
             includeWallets: [
               {
@@ -40,12 +41,11 @@ export default function RootLayout({
                 universalLink: "https://app.tonkeeper.com/ton-connect",
                 bridgeUrl: "https://bridge.tonapi.io/bridge",
                 platforms: ["ios", "android", "chrome"]
-              },
-              // Add other wallets from the example here
+              }
             ]
           }}
           actionsConfiguration={{
-            twaReturnUrl: 'https://t.me/v2_zoa_bot_/start'  // Replace with your bot's username
+            twaReturnUrl: 'https://t.me/v2_zoa_bot/start'  // Replace with your bot's username
           }}
         >
           <AppLayout>{children}</AppLayout>
@@ -53,4 +53,11 @@ export default function RootLayout({
       </body>
     </html>
   )
+}
+
+// Metadata for Next.js
+export const metadata = {
+  title: 'ZOA.fund',
+  description: 'Zero-to-One Accelerator',
+  viewport: 'width=device-width, initial-scale=1, viewport-fit=cover'
 }

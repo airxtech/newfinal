@@ -2,19 +2,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+
+// Extend the Window interface to include Telegram
+declare global {
+  interface Window {
+    Telegram: any;
+  }
+}
 import { useRouter, usePathname } from 'next/navigation'
 import styles from './AppLayout.module.css'
+import { Home, Coins, Rocket, CheckSquare, Wallet } from 'lucide-react'
 
 interface AppLayoutProps {
   children: React.ReactNode
-}
-
-declare global {
-  interface Window {
-    Telegram: {
-      WebApp: any
-    }
-  }
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
@@ -39,15 +39,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const initTelegram = () => {
     try {
       const webApp = window.Telegram.WebApp
+      console.log('WebApp object:', webApp)
+      
       webApp.ready()
       webApp.expand()
 
       if (webApp.initDataUnsafe?.user) {
         const userData = webApp.initDataUnsafe.user
+        console.log('User data:', userData)
         setUser(userData)
         setInitStatus('loaded')
         validateUser(userData)
       } else {
+        console.log('No user data found')
         setInitStatus('no-user')
       }
     } catch (error) {
@@ -58,26 +62,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const validateUser = async (userData: any) => {
     try {
-      // First try to get existing user
-      const getResponse = await fetch(`/api/user?telegramId=${userData.id}`)
-      
-      if (!getResponse.ok && getResponse.status !== 404) {
+      const response = await fetch(`/api/user?telegramId=${userData.id}`)
+      if (!response.ok && response.status !== 404) {
         throw new Error('Failed to fetch user data')
       }
 
-      if (getResponse.status === 404) {
-        // Create new user with referral code
-        const referralCode = generateReferralCode(userData.id)
+      const data = await response.json()
+      if (response.status === 404) {
         const createResponse = await fetch('/api/user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             telegramId: userData.id,
             firstName: userData.first_name,
-            lastName: userData.last_name,
-            username: userData.username,
-            zoaBalance: 0,
-            referralCode
+            lastName: userData.last_name || '',
+            username: userData.username || ''
           })
         })
 
@@ -90,22 +89,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
-  const generateReferralCode = (telegramId: number): string => {
-    // Generate a unique referral code based on telegram ID and timestamp
-    const timestamp = Date.now().toString(36)
-    const userPart = telegramId.toString(36)
-    return `ZOA${userPart}${timestamp}`.toUpperCase()
-  }
-
   const navigation = [
-    { name: 'Home', path: '/' },
-    { name: 'Earn', path: '/earn' },
-    { name: 'Launchpad', path: '/launchpad' },
-    { name: 'Tasks', path: '/tasks' },
-    { name: 'Wallet', path: '/wallet' }
+    { name: 'Home', path: '/', icon: Home },
+    { name: 'Earn', path: '/earn', icon: Coins },
+    { name: 'Launchpad', path: '/launchpad', icon: Rocket },
+    { name: 'Tasks', path: '/tasks', icon: CheckSquare },
+    { name: 'Wallet', path: '/wallet', icon: Wallet }
   ]
 
-  // Loading states
   if (!isClient) {
     return <div className={styles.loading}>Initializing...</div>
   }
@@ -127,17 +118,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <main className={styles.main}>{children}</main>
       
       <nav className={styles.navigation}>
-        {navigation.map((item) => (
-          <button
-            key={item.path}
-            onClick={() => router.push(item.path)}
-            className={`${styles.navButton} ${
-              pathname === item.path ? styles.active : ''
-            }`}
-          >
-            {item.name}
-          </button>
-        ))}
+        {navigation.map((item) => {
+          const Icon = item.icon
+          return (
+            <button
+              key={item.path}
+              onClick={() => router.push(item.path)}
+              className={`${styles.navButton} ${
+                pathname === item.path ? styles.active : ''
+              }`}
+            >
+              <Icon size={20} />
+              <span>{item.name}</span>
+            </button>
+          )
+        })}
       </nav>
     </div>
   )
