@@ -1,9 +1,9 @@
 // app/components/token/TradeModal.tsx
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { Settings, ExternalLink } from 'lucide-react'
-import { useTonConnectUI } from '@tonconnect/ui-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { Settings } from 'lucide-react'
+import { useTonConnectUI, TonConnectUI } from '@tonconnect/ui-react'
 import styles from './TradeModal.module.css'
 
 interface TradeModalProps {
@@ -31,7 +31,8 @@ export const TradeModal: React.FC<TradeModalProps> = ({
   userBalance
 }) => {
   const [tonConnectUI] = useTonConnectUI()
-  const { connected } = tonConnectUI
+  const connected = tonConnectUI.connected
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const [amount, setAmount] = useState('')
   const [slippage, setSlippage] = useState(2) // Default 2%
@@ -48,9 +49,15 @@ export const TradeModal: React.FC<TradeModalProps> = ({
   const transactionFee = tonAmount * 0.01 // 1% fee
   const maxSlippage = (tonAmount * slippage) / 100
 
+  // Auto-focus input when modal opens
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [isOpen])
+
   useEffect(() => {
     if (type === 'buy' && tonAmount > 0) {
-      // Calculate ZOA bonus
       const baseTokenValue = tonAmount * 0.83 // 83% of payment
       const maxBonusValue = baseTokenValue * 0.2 // 20% bonus potential
       const actualBonus = Math.min(maxBonusValue, userBalance.zoa)
@@ -71,8 +78,8 @@ export const TradeModal: React.FC<TradeModalProps> = ({
     if (type === 'buy') {
       const totalRequired = tonAmount + transactionFee
       if (totalRequired > userBalance.ton) return 'Not enough TON'
-    } else {
-      if (tokenAmount > userBalance.token) return `Not enough ${token.ticker}`
+    } else if (tokenAmount > userBalance.token) {
+      return `Not enough ${token.ticker}`
     }
 
     return null
@@ -82,9 +89,18 @@ export const TradeModal: React.FC<TradeModalProps> = ({
     const validationError = validateTransaction()
     if (validationError) {
       if (validationError === 'Connect Wallet') {
-        tonConnectUI.connectWallet()
+        tonConnectUI.connectWallet?.();
       } else if (validationError === 'Not enough TON') {
-        window.Telegram.WebApp.openTelegramLink('https://t.me/wallet')
+        // Send a zero-value transaction to trigger wallet opening
+        tonConnectUI.sendTransaction({
+          validUntil: Math.floor(Date.now() / 1000) + 600,
+          messages: [
+            {
+              address: process.env.NEXT_PUBLIC_WALLET_ADDRESS || '',
+              amount: '0'
+            }
+          ]
+        });
       }
       return
     }
@@ -93,7 +109,6 @@ export const TradeModal: React.FC<TradeModalProps> = ({
     setError(null)
 
     try {
-      // Calculate price with slippage
       const priceWithSlippage = type === 'buy'
         ? token.currentPrice * (1 + slippage / 100)
         : token.currentPrice * (1 - slippage / 100)
@@ -108,19 +123,31 @@ export const TradeModal: React.FC<TradeModalProps> = ({
       })
 
       if (!response.ok) {
-        throw new Error('Transaction failed')
+        const data = await response.json()
+        if (data.error === 'PRICE_IMPACT_TOO_HIGH') {
+          throw new Error(
+            'Trade failed due to high price variation. Please increase your slippage tolerance to handle the current trading volume.'
+          )
+        }
+        throw new Error(data.error || 'Transaction failed')
       }
 
       onClose()
-      window.location.reload() // Refresh to show updated state
+      window.location.reload()
     } catch (error) {
-      setError('Transaction failed. Please try again.')
+      if (error instanceof Error) {
+        setError(error.message)
+      } else {
+        setError('Transaction failed. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
   }
 
   if (!isOpen) return null
+
+  const validationError = validateTransaction()
 
   return (
     <div className={styles.modalOverlay}>
@@ -139,6 +166,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({
             </label>
             <div className={styles.inputWrapper}>
               <input
+                ref={inputRef}
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
@@ -208,9 +236,11 @@ export const TradeModal: React.FC<TradeModalProps> = ({
           <div className={styles.transactionInfo}>
             {error ? (
               <span className={styles.error}>{error}</span>
+            ) : validationError ? (
+              <span className={styles.error}>{validationError}</span>
             ) : (
               <span className={styles.fee}>
-                Transaction Fee: {transactionFee.toFixed(6)} TON
+                Transaction Fee: {transactionFee.toFixed(2)} TON
               </span>
             )}
           </div>
@@ -219,11 +249,13 @@ export const TradeModal: React.FC<TradeModalProps> = ({
             onClick={handleAction}
             disabled={loading}
             className={`${styles.actionButton} ${
-              validateTransaction() ? styles.warningButton : ''
+              validationError === 'Not enough TON' ? styles.warningButton : ''
             } ${type === 'buy' ? styles.buyButton : styles.sellButton}`}
           >
             {loading ? 'Processing...' : (
-              validateTransaction() || (type === 'buy' ? 'Buy' : 'Sell')
+              validationError === 'Not enough TON' ? 'Get more TON' :
+              validationError === 'Connect Wallet' ? 'Connect Wallet' :
+              type === 'buy' ? 'Buy' : 'Sell'
             )}
           </button>
         </div>
