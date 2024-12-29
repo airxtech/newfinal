@@ -7,6 +7,7 @@ import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { useTonConnectUI } from '@tonconnect/ui-react'
 import { TradeModal } from '@/app/components/token/TradeModal'
 import styles from './page.module.css'
+import { PriceChart } from '@/app/components/token/PriceChart'
 
 interface TokenData {
   id: string
@@ -171,6 +172,8 @@ export default function TokenPage() {
           <span className={styles.value}>{formatValue(token.marketCap)}</span>
         </div>
       </div>
+
+      <PriceChart tokenId={token.id} currentPrice={token.currentPrice} />
 
       <div className={styles.bondingCurve}>
         <div className={styles.curveHeader}>
