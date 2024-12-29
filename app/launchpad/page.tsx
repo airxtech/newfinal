@@ -152,59 +152,68 @@ export default function LaunchpadPage() {
         </div>
 
         <div className={styles.tokenGrid}>
-          {tokens.map(token => (
-            <div 
-              key={token.id} 
-              className={styles.tokenCard}
-              onClick={() => router.push(`/launchpad/tokens/${token.id}`)}
-            >
-              <div className={styles.header}>
-                <div className={styles.logo}>{token.logo}</div>
-                <div className={styles.nameContainer}>
-                  <h3>{token.name}</h3>
-                  <span className={styles.ticker}>{token.ticker}</span>
-                </div>
-              </div>
-
-              <div className={styles.stats}>
-                <div className={styles.stat}>
-                  <span className={styles.label}>Transactions</span>
-                  <span className={styles.value}>{token.transactions}</span>
-                </div>
-                <div className={styles.stat}>
-                  <span className={styles.label}>Listed</span>
-                  <span className={styles.value}>{formatTime(token.daysListed)}</span>
-                </div>
-              </div>
-
-              <div className={styles.priceChange}>
-                <span 
-                  className={`${styles.change} ${token.priceChange >= 0 ? styles.positive : styles.negative}`}
+          {tokens.length === 0 ? (
+            <div className={styles.noTokens}>No tokens found</div>
+          ) : (
+            tokens.map(token => {
+              console.log('Navigating to token:', token.id); // Log outside JSX
+              return (
+                <div 
+                  key={token.id} 
+                  className={styles.tokenCard}
+                  onClick={() => router.push(`/launchpad/tokens/${token.id}`)}
                 >
-                  {token.priceChange >= 0 ? '+' : ''}{token.priceChange}%
-                </span>
-                <span className={styles.period}>6h</span>
-              </div>
+                  <div className={styles.header}>
+                    <div className={styles.logo}>{token.logo || '🪙'}</div>
+                    <div className={styles.nameContainer}>
+                      <h3>{token.name}</h3>
+                      <span className={styles.ticker}>{token.ticker}</span>
+                    </div>
+                  </div>
 
-              <div className={styles.bondingCurve}>
-                <div className={styles.progressLabel}>
-                  <span>Bonding Curve</span>
-                  <span>{token.bondingProgress}%</span>
-                </div>
-                <div className={styles.progressBar}>
-                  <div 
-                    className={styles.progress} 
-                    style={{ width: `${token.bondingProgress}%` }}
-                  />
-                </div>
-              </div>
+                  <div className={styles.stats}>
+                    <div className={styles.stat}>
+                      <span className={styles.label}>Transactions</span>
+                      <span className={styles.value}>{token.transactions || 0}</span>
+                    </div>
+                    <div className={styles.stat}>
+                      <span className={styles.label}>Listed</span>
+                      <span className={styles.value}>
+                        {formatTime(token.daysListed || 0)}
+                      </span>
+                    </div>
+                  </div>
 
-              <div className={styles.marketCap}>
-                <span className={styles.label}>Market Cap</span>
-                <span className={styles.value}>{formatValue(token.marketCap)}</span>
-              </div>
-            </div>
-          ))}
+                  <div className={styles.priceChange}>
+                    <span 
+                      className={`${styles.change} ${(token.priceChange || 0) >= 0 ? styles.positive : styles.negative}`}
+                    >
+                      {(token.priceChange || 0) >= 0 ? '+' : ''}{token.priceChange || 0}%
+                    </span>
+                    <span className={styles.period}>6h</span>
+                  </div>
+
+                  <div className={styles.bondingCurve}>
+                    <div className={styles.progressLabel}>
+                      <span>Bonding Curve</span>
+                      <span>{token.bondingProgress || 0}%</span>
+                    </div>
+                    <div className={styles.progressBar}>
+                      <div 
+                        className={styles.progress} 
+                        style={{ width: `${token.bondingProgress || 0}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.marketCap}>
+                    <span className={styles.label}>Market Cap</span>
+                    <span className={styles.value}>{formatValue(token.marketCap || 0)}</span>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </section>
     </div>
