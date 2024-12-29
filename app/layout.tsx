@@ -45,7 +45,7 @@ export default function RootLayout({
             ]
           }}
           actionsConfiguration={{
-            twaReturnUrl: 'https://t.me/v2_zoa_bot/start'  // Replace with your bot's username
+            twaReturnUrl: 'https://t.me/your_bot_username/start'  // Replace with your bot's username
           }}
         >
           <AppLayout>{children}</AppLayout>
@@ -53,11 +53,4 @@ export default function RootLayout({
       </body>
     </html>
   )
-}
-
-// Metadata for Next.js
-export const metadata = {
-  title: 'ZOA.fund',
-  description: 'Zero-to-One Accelerator',
-  viewport: 'width=device-width, initial-scale=1, viewport-fit=cover'
 }
