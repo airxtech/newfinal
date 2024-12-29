@@ -75,7 +75,7 @@ export default function CreateTokenPage() {
       const result = await tonConnectUI.sendTransaction({
         messages: [
           {
-            address: process.env.NEXT_PUBLIC_WALLET_ADDRESS || '', // Use WALLET_ADDRESS from .env
+            address: process.env.WALLET_ADDRESS || '', // Your collection address
             amount: "000000000", // 0.3 TON in nano TON
           }
         ],
