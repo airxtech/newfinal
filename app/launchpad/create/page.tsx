@@ -7,6 +7,11 @@ import { ArrowLeft, Image as ImageIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react'
 
+// Load environment variables
+if (typeof window === 'undefined') {
+  require('dotenv').config()
+}
+
 interface FormData {
   name: string
   ticker: string
@@ -75,8 +80,8 @@ export default function CreateTokenPage() {
       const result = await tonConnectUI.sendTransaction({
         messages: [
           {
-            address: "EQBBLbb3HagsujBqVfqeDUPJ0kXjgTPLWPFFffuNXNiJL0aA", // Your collection address
-            amount: "300000000", // 0.3 TON in nano TON
+            address: process.env.WALLET_ADDRESS, // Use WALLET_ADDRESS from .env
+            amount: "000000000", // 0.3 TON in nano TON
           }
         ],
         validUntil: Math.floor(Date.now() / 1000) + 600 // 10 minutes
