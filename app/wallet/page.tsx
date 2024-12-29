@@ -36,13 +36,11 @@ export default function WalletPage() {
   const [totalValue, setTotalValue] = useState<number>(0)
   const [authorized, setAuthorized] = useState(false)
 
-  // Fetch initial user data
   useEffect(() => {
     console.log('Fetching user data...');
     fetchUserData();
   }, []);
 
-  // Handle wallet connection changes
   useEffect(() => {
     if (wallet && user?.telegramId) {
       console.log('Wallet connected:', wallet);
@@ -67,7 +65,7 @@ export default function WalletPage() {
         return response.json();
       }).then(data => {
         console.log('Wallet update successful:', data);
-        setUser(data); // Update local user state with new data
+        setUser(data);
       }).catch(err => {
         console.error('Error updating wallet info:', err);
       });
@@ -144,9 +142,6 @@ export default function WalletPage() {
   const formatAddress = (address: string) => {
     if (!address) return '';
 
-    // Convert raw address to user-friendly format
-    // Raw format: 0:abc...def
-    // User-friendly format: EQC...xyz
     try {
       // Remove workchain prefix (0:) if exists
       const rawAddress = address.startsWith('0:') ? address.slice(2) : address;
@@ -164,10 +159,7 @@ export default function WalletPage() {
       console.error('Error formatting address:', error);
       return address.slice(0, 6) + '...' + address.slice(-4);
     }
-  } 
-
-  console.log('Current user state:', user);
-  console.log('Current portfolio:', portfolio);
+  }
 
   if (!user) {
     console.log('Rendering loading state...');
@@ -198,7 +190,7 @@ export default function WalletPage() {
                 '0.00 TON'}
             </div>
             {wallet.account?.address && (
-              <div className={styles.address}>
+              <div className={styles.address} title={wallet.account.address}>
                 {formatAddress(wallet.account.address)}
               </div>
             )}
