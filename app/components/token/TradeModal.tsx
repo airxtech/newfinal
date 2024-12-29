@@ -2,8 +2,8 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Settings } from 'lucide-react'
-import { useTonConnectUI, TonConnectUI } from '@tonconnect/ui-react'
+import { Settings, ArrowLeft, ToggleLeft, ToggleRight } from 'lucide-react'
+import { useTonConnectUI } from '@tonconnect/ui-react'
 import styles from './TradeModal.module.css'
 
 interface TradeModalProps {
@@ -35,8 +35,9 @@ export const TradeModal: React.FC<TradeModalProps> = ({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [amount, setAmount] = useState('')
-  const [slippage, setSlippage] = useState(2) // Default 2%
+  const [slippage, setSlippage] = useState(2)
   const [showSlippageSettings, setShowSlippageSettings] = useState(false)
+  const [useZoaBonus, setUseZoaBonus] = useState(false)
   const [zoaBonus, setZoaBonus] = useState({ tokens: 0, usdValue: 0 })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,10 +47,9 @@ export const TradeModal: React.FC<TradeModalProps> = ({
     ? tonAmount / token.currentPrice 
     : parseFloat(amount) || 0
 
-  const transactionFee = tonAmount * 0.01 // 1% fee
+  const transactionFee = tonAmount * 0.01
   const maxSlippage = (tonAmount * slippage) / 100
 
-  // Auto-focus input when modal opens
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus()
@@ -57,9 +57,9 @@ export const TradeModal: React.FC<TradeModalProps> = ({
   }, [isOpen])
 
   useEffect(() => {
-    if (type === 'buy' && tonAmount > 0) {
-      const baseTokenValue = tonAmount * 0.83 // 83% of payment
-      const maxBonusValue = baseTokenValue * 0.2 // 20% bonus potential
+    if (type === 'buy' && tonAmount > 0 && useZoaBonus) {
+      const baseTokenValue = tonAmount * 0.83
+      const maxBonusValue = baseTokenValue * 0.2
       const actualBonus = Math.min(maxBonusValue, userBalance.zoa)
       const bonusTokens = actualBonus / token.currentPrice
 
@@ -70,7 +70,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({
     } else {
       setZoaBonus({ tokens: 0, usdValue: 0 })
     }
-  }, [amount, type, token.currentPrice, userBalance.zoa])
+  }, [amount, type, token.currentPrice, userBalance.zoa, useZoaBonus])
 
   const validateTransaction = () => {
     if (!connected) return 'Connect Wallet'
@@ -89,9 +89,8 @@ export const TradeModal: React.FC<TradeModalProps> = ({
     const validationError = validateTransaction()
     if (validationError) {
       if (validationError === 'Connect Wallet') {
-        tonConnectUI.connectWallet?.();
+        tonConnectUI.connectWallet?.()
       } else if (validationError === 'Not enough TON') {
-        // Send a zero-value transaction to trigger wallet opening
         tonConnectUI.sendTransaction({
           validUntil: Math.floor(Date.now() / 1000) + 600,
           messages: [
@@ -100,7 +99,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({
               amount: '0'
             }
           ]
-        });
+        })
       }
       return
     }
@@ -119,6 +118,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({
         body: JSON.stringify({
           amount: type === 'buy' ? tonAmount : tokenAmount,
           maxPrice: priceWithSlippage,
+          useZoaBonus
         })
       })
 
@@ -150,89 +150,112 @@ export const TradeModal: React.FC<TradeModalProps> = ({
   const validationError = validateTransaction()
 
   return (
-    <div className={styles.modalOverlay}>
-      <div className={styles.modal}>
-        <div className={styles.modalHeader}>
-          <h3 className={styles.modalTitle}>
-            {type === 'buy' ? 'Buy' : 'Sell'} {token.ticker}
-          </h3>
-          <button onClick={onClose} className={styles.closeButton}>&times;</button>
+    <div className={styles.fullscreenPage}>
+      <div className={styles.header}>
+        <button onClick={onClose} className={styles.backButton}>
+          <ArrowLeft size={24} />
+        </button>
+        <h1 className={styles.title}>
+          {type === 'buy' ? 'Buy' : 'Sell'} {token.ticker}
+        </h1>
+      </div>
+
+      <div className={styles.content}>
+        <div className={styles.amountSection}>
+          <input
+            ref={inputRef}
+            type="number"
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="0"
+            className={styles.amountInput}
+          />
+          <span className={styles.currency}>
+            {type === 'buy' ? 'TON' : token.ticker}
+          </span>
+          <div className={styles.conversionRate}>
+            ≈ {type === 'buy' 
+              ? `${tokenAmount.toFixed(6)} ${token.ticker}` 
+              : `${tonAmount.toFixed(6)} TON`}
+          </div>
         </div>
 
-        <div className={styles.modalContent}>
-          <div className={styles.inputGroup}>
-            <label className={styles.label}>
-              {type === 'buy' ? 'TON Amount' : `${token.ticker} Amount`}
-            </label>
-            <div className={styles.inputWrapper}>
+        <div className={styles.slippageSection}>
+          <div className={styles.sectionHeader}>
+            <span>Slippage Tolerance</span>
+            <button 
+              onClick={() => setShowSlippageSettings(!showSlippageSettings)}
+              className={styles.settingsButton}
+            >
+              <Settings size={20} />
+            </button>
+          </div>
+          
+          {showSlippageSettings && (
+            <div className={styles.slippageOptions}>
+              {[0.5, 1, 2, 3].map((value) => (
+                <button
+                  key={value}
+                  onClick={() => setSlippage(value)}
+                  className={`${styles.slippageOption} ${
+                    slippage === value ? styles.active : ''
+                  }`}
+                >
+                  {value}%
+                </button>
+              ))}
               <input
-                ref={inputRef}
                 type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className={styles.input}
+                value={slippage}
+                onChange={(e) => setSlippage(Number(e.target.value))}
+                className={styles.slippageInput}
+                placeholder="Custom"
               />
-              <span className={styles.inputSuffix}>
-                {type === 'buy' ? 'TON' : token.ticker}
-              </span>
-            </div>
-            <div className={styles.conversionRate}>
-              ≈ {type === 'buy' 
-                ? `${tokenAmount.toFixed(6)} ${token.ticker}` 
-                : `${tonAmount.toFixed(6)} TON`}
-            </div>
-          </div>
-
-          <div className={styles.slippageSettings}>
-            <div className={styles.slippageHeader}>
-              <span>Slippage Tolerance</span>
-              <button 
-                onClick={() => setShowSlippageSettings(!showSlippageSettings)}
-                className={styles.settingsButton}
-              >
-                <Settings size={16} />
-              </button>
-            </div>
-            
-            {showSlippageSettings && (
-              <div className={styles.slippageOptions}>
-                {[0.5, 1, 2, 3].map((value) => (
-                  <button
-                    key={value}
-                    onClick={() => setSlippage(value)}
-                    className={`${styles.slippageOption} ${
-                      slippage === value ? styles.active : ''
-                    }`}
-                  >
-                    {value}%
-                  </button>
-                ))}
-                <input
-                  type="number"
-                  value={slippage}
-                  onChange={(e) => setSlippage(Number(e.target.value))}
-                  className={styles.slippageInput}
-                  placeholder="Custom"
-                />
-              </div>
-            )}
-            <div className={styles.slippageInfo}>
-              Max slippage: {maxSlippage.toFixed(6)} TON
-            </div>
-          </div>
-
-          {type === 'buy' && zoaBonus.tokens > 0 && (
-            <div className={styles.bonusBox}>
-              <div className={styles.bonusContent}>
-                ZOA Bonus: +{zoaBonus.tokens.toFixed(6)} {token.ticker}
-                <span className={styles.bonusValue}>
-                  (≈${zoaBonus.usdValue.toFixed(2)})
-                </span>
-              </div>
             </div>
           )}
+          <div className={styles.slippageInfo}>
+            Max slippage: {maxSlippage.toFixed(6)} TON
+          </div>
+        </div>
 
+        {type === 'buy' && (
+          <div className={styles.bonusSection}>
+            <div className={styles.sectionHeader}>
+              <span>ZOA Bonus</span>
+              <button
+                onClick={() => setUseZoaBonus(!useZoaBonus)}
+                className={styles.toggleButton}
+              >
+                {useZoaBonus ? (
+                  <ToggleRight size={24} className={styles.toggleActive} />
+                ) : (
+                  <ToggleLeft size={24} />
+                )}
+              </button>
+            </div>
+            {useZoaBonus ? (
+              userBalance.zoa > 0 ? (
+                <div className={styles.bonusInfo}>
+                  <span>+{zoaBonus.tokens.toFixed(6)} {token.ticker}</span>
+                  <span className={styles.bonusValue}>
+                    (≈${zoaBonus.usdValue.toFixed(2)})
+                  </span>
+                </div>
+              ) : (
+                <div className={styles.bonusError}>
+                  Not enough ZOA
+                </div>
+              )
+            ) : (
+              <div className={styles.bonusDisabled}>
+                Enable to use ZOA for bonus tokens
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className={styles.footer}>
           <div className={styles.transactionInfo}>
             {error ? (
               <span className={styles.error}>{error}</span>

@@ -1,127 +1,119 @@
-.modalOverlay {
+.fullscreenPage {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  z-index: 50;
-}
-
-.modal {
   background-color: var(--tg-theme-bg-color, #ffffff);
-  border-radius: 16px;
-  width: 100%;
-  max-width: 400px;
-  overflow: hidden;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
 }
 
-.modalHeader {
+.header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 16px;
   padding: 16px;
   border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #f0f0f0);
 }
 
-.modalTitle {
-  font-size: 18px;
+.backButton {
+  background: none;
+  border: none;
+  padding: 8px;
+  color: var(--tg-theme-text-color, #000000);
+  cursor: pointer;
+}
+
+.title {
+  font-size: 20px;
   font-weight: 600;
   margin: 0;
 }
 
-.closeButton {
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.amountSection {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.amountInput {
+  width: 100%;
   background: none;
   border: none;
-  font-size: 24px;
-  color: var(--tg-theme-hint-color, #999999);
-  cursor: pointer;
-  padding: 4px;
-}
-
-.modalContent {
-  padding: 16px;
-}
-
-.inputGroup {
-  margin-bottom: 20px;
-}
-
-.label {
-  display: block;
-  font-size: 14px;
-  color: var(--tg-theme-hint-color, #999999);
-  margin-bottom: 8px;
-}
-
-.inputWrapper {
-  position: relative;
-}
-
-.input {
-  width: 100%;
-  padding: 16px;
-  padding-right: 80px;
-  border: 1px solid var(--tg-theme-secondary-bg-color, #f0f0f0);
-  border-radius: 12px;
-  font-size: 36px;
-  font-weight: 600;
+  font-size: 48px;
+  font-weight: 700;
   text-align: center;
-  background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  color: var(--tg-theme-text-color, #000000);
+  margin-bottom: 8px;
+  padding: 0;
 }
 
-.input:focus {
+.amountInput:focus {
   outline: none;
-  border-color: var(--tg-theme-button-color, #2481cc);
 }
 
-.inputSuffix {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+.currency {
+  font-size: 20px;
   color: var(--tg-theme-hint-color, #999999);
 }
 
 .conversionRate {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--tg-theme-hint-color, #999999);
   margin-top: 8px;
 }
 
-.slippageSettings {
-  margin-bottom: 20px;
+.slippageSection,
+.bonusSection {
+  background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
-.slippageHeader {
+.sectionHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 500;
 }
 
-.settingsButton {
+.settingsButton,
+.toggleButton {
   background: none;
   border: none;
   padding: 4px;
-  color: var(--tg-theme-hint-color, #999999);
   cursor: pointer;
+  color: var(--tg-theme-hint-color, #999999);
+}
+
+.toggleButton .toggleActive {
+  color: var(--tg-theme-button-color, #2481cc);
 }
 
 .slippageOptions {
   display: flex;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
 .slippageOption {
-  padding: 6px 12px;
-  border-radius: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
   border: none;
-  background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  background-color: var(--tg-theme-bg-color, #ffffff);
   font-size: 14px;
   cursor: pointer;
+  color: var(--tg-theme-text-color, #000000);
 }
 
 .slippageOption.active {
@@ -131,59 +123,70 @@
 
 .slippageInput {
   width: 80px;
-  padding: 6px;
-  border: 1px solid var(--tg-theme-secondary-bg-color, #f0f0f0);
-  border-radius: 6px;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
   font-size: 14px;
   text-align: center;
+  background-color: var(--tg-theme-bg-color, #ffffff);
 }
 
 .slippageInfo {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--tg-theme-hint-color, #999999);
 }
 
-.bonusBox {
-  background-color: rgba(16, 185, 129, 0.1);
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 20px;
-}
-
-.bonusContent {
-  color: #10b981;
-  font-size: 14px;
+.bonusInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--tg-theme-button-color, #2481cc);
+  font-size: 16px;
 }
 
 .bonusValue {
-  display: block;
-  font-size: 12px;
+  font-size: 14px;
   opacity: 0.8;
 }
 
+.bonusError {
+  color: #ef4444;
+  font-size: 14px;
+}
+
+.bonusDisabled {
+  color: var(--tg-theme-hint-color, #999999);
+  font-size: 14px;
+}
+
+.footer {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
 .transactionInfo {
-  text-align: right;
+  text-align: center;
   margin-bottom: 16px;
 }
 
 .fee {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--tg-theme-hint-color, #999999);
 }
 
 .error {
-  font-size: 12px;
+  font-size: 14px;
   color: #ef4444;
   font-weight: 500;
 }
 
 .actionButton {
   width: 100%;
-  padding: 14px;
+  padding: 16px;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s;
 }
