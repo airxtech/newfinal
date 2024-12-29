@@ -26,7 +26,7 @@ interface WalletWithBalance {
 }
 
 export default function WalletPage() {
-  const wallet = useTonWallet() as WalletWithBalance;
+  const wallet = useTonWallet() as unknown as WalletWithBalance;
   const [tonConnectUI] = useTonConnectUI();
   
   const [user, setUser] = useState<any>(null)
