@@ -3,8 +3,9 @@
 
 import { useState } from 'react'
 import styles from './page.module.css'
-import { ArrowLeft, Image as ImageIcon, Upload } from 'lucide-react'
+import { ArrowLeft, Image as ImageIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react'
 
 interface FormData {
   name: string
@@ -19,6 +20,9 @@ interface FormData {
 
 export default function CreateTokenPage() {
   const router = useRouter()
+  const wallet = useTonWallet()
+  const [tonConnectUI] = useTonConnectUI()
+  const [user, setUser] = useState<any>(null) // Replace with actual user fetching logic
   const [formData, setFormData] = useState<FormData>({
     name: '',
     ticker: '',
@@ -62,7 +66,26 @@ export default function CreateTokenPage() {
     setError(null)
 
     try {
-      // First upload image if exists
+      // First check if wallet is connected
+      if (!wallet) {
+        throw new Error('Please connect your TON wallet first')
+      }
+
+      // Request payment of 0.3 TON
+      const result = await tonConnectUI.sendTransaction({
+        messages: [
+          {
+            address: "EQBBLbb3HagsujBqVfqeDUPJ0kXjgTPLWPFFffuNXNiJL0aA", // Your collection address
+            amount: "300000000", // 0.3 TON in nano TON
+          }
+        ],
+        validUntil: Math.floor(Date.now() / 1000) + 600 // 10 minutes
+      })
+
+      // Get payment transaction hash
+      const paymentTxHash = result.boc
+
+      // Upload image if exists
       let imageUrl = formData.imageUrl
       if (imageFile) {
         const formData = new FormData()
@@ -76,14 +99,15 @@ export default function CreateTokenPage() {
         imageUrl = url
       }
 
-      // Create token with uploaded image URL
+      // Create token with payment proof
       const tokenResponse = await fetch('/api/tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           imageUrl,
-          isGuaranteed: false // Regular meme coin creation
+          creatorId: user?.id,
+          paymentTxHash
         })
       })
 
