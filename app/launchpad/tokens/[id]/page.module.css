@@ -1,270 +1,271 @@
 .container {
-    padding: 20px;
-    max-width: 600px;
-    margin: 0 auto;
-  }
-  
-  .header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-  
-  .backButton {
-    border: none;
-    background: none;
-    padding: 8px;
-    color: var(--tg-theme-text-color, #000000);
-    cursor: pointer;
-  }
-  
-  .tokenInfo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  
-  .tokenImage {
-    width: 48px;
-    height: 48px;
-    border-radius: 8px;
-    object-fit: cover;
-  }
-  
-  .tokenInfo h1 {
-    font-size: 24px;
-    margin: 0;
-  }
-  
-  .ticker {
-    font-size: 14px;
-    color: var(--tg-theme-hint-color, #999999);
-  }
-  
-  .stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-  
-  .stat {
-    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
-    padding: 16px;
-    border-radius: 12px;
-    text-align: center;
-  }
-  
-  .label {
-    font-size: 14px;
-    color: var(--tg-theme-hint-color, #999999);
-    display: block;
-    margin-bottom: 4px;
-  }
-  
-  .value {
-    font-size: 18px;
-    font-weight: 500;
-  }
-  
-  .bondingCurve {
-    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
-    padding: 16px;
-    border-radius: 12px;
-    margin-bottom: 24px;
-  }
-  
-  .curveHeader {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    font-size: 14px;
-  }
-  
-  .progressBar {
-    height: 8px;
-    background-color: var(--tg-theme-bg-color, #ffffff);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  
-  .progress {
-    height: 100%;
-    background-color: var(--tg-theme-button-color, #2481cc);
-    transition: width 0.3s ease;
-  }
-  
-  .tabs {
-    display: flex;
-    gap: 2px;
-    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
-    padding: 2px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-  }
-  
-  .tab {
-    flex: 1;
-    padding: 8px;
-    border: none;
-    background: none;
-    border-radius: 6px;
-    font-size: 14px;
-    cursor: pointer;
-    color: var(--tg-theme-hint-color, #999999);
-  }
-  
-  .tab.active {
-    background-color: var(--tg-theme-bg-color, #ffffff);
-    color: var(--tg-theme-text-color, #000000);
-  }
-  
-  .tabContent {
-    margin-bottom: 24px;
-  }
-  
-  .overview .description {
-    margin: 0 0 16px;
-    line-height: 1.5;
-  }
-  
-  .links {
-    display: flex;
-    gap: 12px;
-  }
-  
-  .links a {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--tg-theme-button-color, #2481cc);
-    text-decoration: none;
-    font-size: 14px;
-  }
-  
-  .transaction, .holder {
-    padding: 12px 0;
-    border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #f0f0f0);
-  }
-  
-  .txInfo, .holderInfo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 4px;
-  }
-  
-  .address {
-    font-size: 14px;
-    font-family: monospace;
-  }
-  
-  .type {
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 12px;
-  }
-  
-  .buy {
-    background-color: rgba(16, 185, 129, 0.1);
-    color: #10b981;
-  }
-  
-  .sell {
-    background-color: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-  }
-  
-  .time {
-    font-size: 12px;
-    color: var(--tg-theme-hint-color, #999999);
-  }
-  
-  .dev {
-    font-size: 12px;
-    color: var(--tg-theme-hint-color, #999999);
-    margin-left: 4px;
-  }
-  
-  .percentage {
-    font-size: 14px;
-    color: var(--tg-theme-hint-color, #999999);
-  }
-  
-  .amount {
-    font-size: 14px;
-  }
-  
-  .actions {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 16px;
-    background-color: var(--tg-theme-bg-color, #ffffff);
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  
-  .inputGroup {
-    display: flex;
-    gap: 8px;
-  }
-  
-  .inputGroup input {
-    flex: 1;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid var(--tg-theme-hint-color, #999999);
-    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
-    color: var(--tg-theme-text-color, #000000);
-    font-size: 16px;
-  }
-  
-  .buyButton, .sellButton, .stonButton {
-    padding: 12px 24px;
-    border-radius: 8px;
-    border: none;
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-  
-  .buyButton {
-    background-color: #10b981;
-    color: white;
-  }
-  
-  .sellButton {
-    background-color: #ef4444;
-    color: white;
-  }
-  
-  .stonButton {
-    background-color: var(--tg-theme-button-color, #2481cc);
-    color: var(--tg-theme-button-text-color, #ffffff);
-    width: 100%;
-  }
-  
-  .loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    color: var(--tg-theme-hint-color, #999999);
-  }
-  
-  .error {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    color: #ef4444;
-  }
+  padding: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+  padding-bottom: 100px; /* Space for action buttons */
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.backButton {
+  border: none;
+  background: none;
+  padding: 8px;
+  color: var(--tg-theme-text-color, #000000);
+  cursor: pointer;
+}
+
+.tokenInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tokenImage {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.tokenInfo h1 {
+  font-size: 24px;
+  margin: 0;
+}
+
+.ticker {
+  font-size: 14px;
+  color: var(--tg-theme-hint-color, #999999);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat {
+  background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.label {
+  font-size: 14px;
+  color: var(--tg-theme-hint-color, #999999);
+  margin-bottom: 4px;
+}
+
+.value {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--tg-theme-text-color, #000000);
+}
+
+.bondingCurve {
+  background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.curveHeader {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--tg-theme-hint-color, #999999);
+}
+
+.progressBar {
+  height: 8px;
+  background-color: var(--tg-theme-bg-color, #ffffff);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress {
+  height: 100%;
+  background-color: var(--tg-theme-button-color, #2481cc);
+  transition: width 0.3s ease;
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  padding: 2px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.tab {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--tg-theme-hint-color, #999999);
+}
+
+.tab.active {
+  background-color: var(--tg-theme-bg-color, #ffffff);
+  color: var(--tg-theme-text-color, #000000);
+}
+
+.overview .description {
+  margin: 0 0 16px;
+  line-height: 1.5;
+  color: var(--tg-theme-text-color, #000000);
+}
+
+.links {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.links a {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--tg-theme-button-color, #2481cc);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.transaction, .holder {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #f0f0f0);
+}
+
+.txInfo, .holderInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.address {
+  font-family: monospace;
+  font-size: 14px;
+  color: var(--tg-theme-text-color, #000000);
+}
+
+.dev {
+  font-size: 12px;
+  color: var(--tg-theme-hint-color, #999999);
+  margin-left: 4px;
+}
+
+.type {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.buy {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.sell {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.time {
+  font-size: 12px;
+  color: var(--tg-theme-hint-color, #999999);
+}
+
+.actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px;
+  background-color: var(--tg-theme-bg-color, #ffffff);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.tradeButtons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.buyButton,
+.sellButton,
+.stonButton {
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.2s;
+}
+
+.buyButton {
+  background-color: #10b981;
+  color: white;
+}
+
+.buyButton:hover {
+  opacity: 0.9;
+}
+
+.sellButton {
+  background-color: #ef4444;
+  color: white;
+}
+
+.sellButton:hover {
+  opacity: 0.9;
+}
+
+.sellButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.stonButton {
+  background-color: var(--tg-theme-button-color, #2481cc);
+  color: var(--tg-theme-button-text-color, #ffffff);
+  width: 100%;
+}
+
+.stonButton:hover {
+  opacity: 0.9;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: var(--tg-theme-hint-color, #999999);
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: #ef4444;
+}

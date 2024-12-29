@@ -1,0 +1,95 @@
+.container {
+    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+  }
+  
+  .priceInfo {
+    flex: 1;
+  }
+  
+  .currentPrice {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--tg-theme-text-color, #000000);
+    margin-bottom: 4px;
+  }
+  
+  .priceChange {
+    font-size: 14px;
+    font-weight: 500;
+  }
+  
+  .positive {
+    color: #10b981;
+  }
+  
+  .negative {
+    color: #ef4444;
+  }
+  
+  .timeframes {
+    display: flex;
+    gap: 4px;
+  }
+  
+  .timeframeButton {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    color: var(--tg-theme-hint-color, #999999);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .timeframeButton.active {
+    background-color: var(--tg-theme-button-color, #2481cc);
+    color: var(--tg-theme-button-text-color, #ffffff);
+  }
+  
+  .chart {
+    height: 300px;
+  }
+  
+  .tooltip {
+    background-color: var(--tg-theme-bg-color, #ffffff);
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .tooltipTime {
+    font-size: 12px;
+    color: var(--tg-theme-hint-color, #999999);
+    margin-bottom: 4px;
+  }
+  
+  .tooltipPrice {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--tg-theme-text-color, #000000);
+    margin-bottom: 4px;
+  }
+  
+  .tooltipVolume {
+    font-size: 12px;
+    color: var(--tg-theme-hint-color, #999999);
+  }
+  
+  .loading {
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--tg-theme-hint-color, #999999);
+  }

@@ -4,7 +4,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
+import { useTonConnectUI } from '@tonconnect/ui-react'
+import { TradeModal } from '@/app/components/token/TradeModal'
 import styles from './page.module.css'
+import { PriceChart } from '@/app/components/token/PriceChart'
 
 interface TokenData {
   id: string
@@ -40,37 +43,50 @@ interface Holder {
   isDev?: boolean
 }
 
+interface UserBalances {
+  ton: number
+  token: number
+  zoa: number
+}
+
 export default function TokenPage() {
   const params = useParams()
   const router = useRouter()
+  const [tonConnectUI] = useTonConnectUI()
+  const { connected } = tonConnectUI
   const [token, setToken] = useState<TokenData | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'trades' | 'holders'>('overview')
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [holders, setHolders] = useState<Holder[]>([])
   const [loading, setLoading] = useState(true)
-  const [buyAmount, setBuyAmount] = useState('')
-  const [sellAmount, setSellAmount] = useState('')
+  const [showTradeModal, setShowTradeModal] = useState(false)
+  const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy')
+  const [userBalances, setUserBalances] = useState<UserBalances>({
+    ton: 0,
+    token: 0,
+    zoa: 0
+  })
 
   useEffect(() => {
     fetchTokenData()
-  }, [params.id])
+    if (connected) {
+      fetchUserBalances()
+    }
+  }, [params.id, connected])
 
   const fetchTokenData = async () => {
     try {
-      // Fetch token details
       const response = await fetch(`/api/tokens/${params.id}`)
       if (!response.ok) throw new Error('Failed to fetch token')
       const tokenData = await response.json()
       setToken(tokenData)
 
-      // Fetch transactions
       const txResponse = await fetch(`/api/tokens/${params.id}/transactions`)
       if (txResponse.ok) {
         const txData = await txResponse.json()
         setTransactions(txData)
       }
 
-      // Fetch holders
       const holdersResponse = await fetch(`/api/tokens/${params.id}/holders`)
       if (holdersResponse.ok) {
         const holdersData = await holdersResponse.json()
@@ -84,41 +100,39 @@ export default function TokenPage() {
     }
   }
 
-  const handleBuy = async () => {
+  const fetchUserBalances = async () => {
     try {
-      const response = await fetch(`/api/tokens/${params.id}/buy`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: Number(buyAmount) })
+      const webApp = window.Telegram.WebApp
+      if (!webApp?.initDataUnsafe?.user?.id) return
+
+      // Fetch TON balance from connected wallet
+      const walletResponse = await fetch(`/api/user?telegramId=${webApp.initDataUnsafe.user.id}`)
+      const userData = await walletResponse.json()
+
+      // Fetch token balance
+      const tokenResponse = await fetch(`/api/tokens/${params.id}/balance?telegramId=${webApp.initDataUnsafe.user.id}`)
+      const tokenData = await tokenResponse.json()
+
+      setUserBalances({
+        ton: userData.tonBalance || 0,
+        token: tokenData.balance || 0,
+        zoa: userData.zoaBalance || 0
       })
-      if (!response.ok) throw new Error('Failed to execute buy')
-      fetchTokenData() // Refresh data
-      setBuyAmount('')
     } catch (error) {
-      console.error('Error buying token:', error)
+      console.error('Error fetching user balances:', error)
     }
   }
 
-  const handleSell = async () => {
-    try {
-      const response = await fetch(`/api/tokens/${params.id}/sell`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: Number(sellAmount) })
-      })
-      if (!response.ok) throw new Error('Failed to execute sell')
-      fetchTokenData() // Refresh data
-      setSellAmount('')
-    } catch (error) {
-      console.error('Error selling token:', error)
-    }
+  const handleTrade = (type: 'buy' | 'sell') => {
+    setTradeType(type)
+    setShowTradeModal(true)
   }
 
-  const formatAmount = (amount: number) => {
+  const formatValue = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(amount)
+    }).format(value)
   }
 
   const formatAddress = (address: string) => {
@@ -151,13 +165,15 @@ export default function TokenPage() {
       <div className={styles.stats}>
         <div className={styles.stat}>
           <span className={styles.label}>Price</span>
-          <span className={styles.value}>{formatAmount(token.currentPrice)}</span>
+          <span className={styles.value}>{formatValue(token.currentPrice)}</span>
         </div>
         <div className={styles.stat}>
           <span className={styles.label}>Market Cap</span>
-          <span className={styles.value}>{formatAmount(token.marketCap)}</span>
+          <span className={styles.value}>{formatValue(token.marketCap)}</span>
         </div>
       </div>
+
+      <PriceChart tokenId={token.id} currentPrice={token.currentPrice} />
 
       <div className={styles.bondingCurve}>
         <div className={styles.curveHeader}>
@@ -228,7 +244,7 @@ export default function TokenPage() {
                   <span className={`${styles.type} ${styles[tx.type.toLowerCase()]}`}>
                     {tx.type}
                   </span>
-                  <span className={styles.amount}>{formatAmount(tx.amount)}</span>
+                  <span className={styles.amount}>{formatValue(tx.amount)}</span>
                 </div>
                 <span className={styles.time}>
                   {new Date(tx.timestamp).toLocaleString()}
@@ -267,42 +283,33 @@ export default function TokenPage() {
             Trade on STON.fi <ExternalLink size={16} />
           </button>
         ) : (
-          <>
-            <div className={styles.inputGroup}>
-              <input
-                type="number"
-                value={buyAmount}
-                onChange={(e) => setBuyAmount(e.target.value)}
-                placeholder="Enter TON amount"
-                min="0"
-              />
-              <button 
-                className={styles.buyButton}
-                onClick={handleBuy}
-                disabled={!buyAmount}
-              >
-                Buy
-              </button>
-            </div>
-            <div className={styles.inputGroup}>
-              <input
-                type="number"
-                value={sellAmount}
-                onChange={(e) => setSellAmount(e.target.value)}
-                placeholder="Enter token amount"
-                min="0"
-              />
-              <button 
-                className={styles.sellButton}
-                onClick={handleSell}
-                disabled={!sellAmount}
-              >
-                Sell
-              </button>
-            </div>
-          </>
+          <div className={styles.tradeButtons}>
+            <button 
+              className={styles.buyButton}
+              onClick={() => handleTrade('buy')}
+            >
+              Buy
+            </button>
+            <button 
+              className={styles.sellButton}
+              onClick={() => handleTrade('sell')}
+              disabled={!userBalances.token}
+            >
+              Sell
+            </button>
+          </div>
         )}
       </div>
+
+      {showTradeModal && (
+        <TradeModal
+          isOpen={showTradeModal}
+          onClose={() => setShowTradeModal(false)}
+          type={tradeType}
+          token={token}
+          userBalance={userBalances}
+        />
+      )}
     </div>
   )
 }

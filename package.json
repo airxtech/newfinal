@@ -19,12 +19,14 @@
     "next": "14.0.4",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "recharts": "^2.15.0",
     "uuid": "^11.0.3"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "20.10.0",
     "@types/react": "18.2.0",
+    "@types/recharts": "^1.8.29",
     "autoprefixer": "10.4.16",
     "postcss": "8.4.32",
     "prisma": "^5.22.0",
