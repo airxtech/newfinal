@@ -1,10 +1,10 @@
 // app/wallet/page.tsx
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import styles from './page.module.css'
 import { Wallet as WalletIcon } from 'lucide-react'
-import { useTonConnectUI, useTonWallet, CHAIN } from '@tonconnect/ui-react'
+import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react'
 import { TonProofApi } from '../lib/ton-proof-api'
 
 interface Token {
@@ -19,8 +19,14 @@ interface Token {
   contractAddress?: string
 }
 
+interface WalletWithBalance {
+  address: string;
+  publicKey: string;
+  balance?: string;
+}
+
 export default function WalletPage() {
-  const wallet = useTonWallet();
+  const wallet = useTonWallet() as WalletWithBalance;
   const [tonConnectUI] = useTonConnectUI();
   
   const [user, setUser] = useState<any>(null)
@@ -29,45 +35,39 @@ export default function WalletPage() {
   const [authorized, setAuthorized] = useState(false)
 
   useEffect(() => {
-    const initializeWallet = async () => {
-      if (!wallet) {
-        TonProofApi.reset();
-        setAuthorized(false);
-        return;
-      }
-
-      // Handle proof verification if available
-      if (wallet.connectItems?.tonProof && 'proof' in wallet.connectItems.tonProof) {
-        await TonProofApi.checkProof(wallet.connectItems.tonProof.proof, wallet.account);
-      }
-
-      if (!TonProofApi.accessToken) {
-        tonConnectUI.disconnect();
-        setAuthorized(false);
-        return;
-      }
-
-      setAuthorized(true);
-      fetchUserData();
-    };
-
-    initializeWallet();
-  }, [wallet, tonConnectUI]);
+    console.log('Fetching user data...');
+    fetchUserData();
+  }, []);
 
   const fetchUserData = async () => {
     try {
       const webApp = window.Telegram.WebApp
-      if (!webApp?.initDataUnsafe?.user?.id) return
+      console.log('WebApp object:', webApp);
+      console.log('WebApp user:', webApp?.initDataUnsafe?.user);
 
+      if (!webApp?.initDataUnsafe?.user?.id) {
+        console.log('No user ID found in WebApp');
+        return;
+      }
+
+      console.log('Fetching user with ID:', webApp.initDataUnsafe.user.id);
       const response = await fetch(`/api/user?telegramId=${webApp.initDataUnsafe.user.id}`)
+      console.log('User API response:', response);
+
       if (response.ok) {
         const data = await response.json()
+        console.log('User data received:', data);
         setUser(data)
         
         // Fetch user's tokens
+        console.log('Fetching tokens...');
         const tokensResponse = await fetch(`/api/tokens/user/${data.telegramId}`)
+        console.log('Tokens API response:', tokensResponse);
+
         if (tokensResponse.ok) {
           const tokensData = await tokensResponse.json()
+          console.log('Tokens data received:', tokensData);
+          
           // Add ZOA token as first item
           const portfolio = [{
             id: 'zoa',
@@ -84,10 +84,14 @@ export default function WalletPage() {
           // Calculate total portfolio value
           const total = portfolio.reduce((acc, token) => acc + token.value, 0)
           setTotalValue(total)
+        } else {
+          console.log('Failed to fetch tokens:', tokensResponse.status);
         }
+      } else {
+        console.log('Failed to fetch user:', response.status);
       }
     } catch (error) {
-      console.error('Error fetching user data:', error)
+      console.error('Error in fetchUserData:', error)
     }
   }
 
@@ -102,7 +106,11 @@ export default function WalletPage() {
     window.Telegram.WebApp.openLink(`https://app.ston.fi/swap?token=${contractAddress}`)
   }
 
+  console.log('Current user state:', user);
+  console.log('Current portfolio:', portfolio);
+
   if (!user) {
+    console.log('Rendering loading state...');
     return <div className={styles.loading}>Loading...</div>
   }
 
@@ -116,7 +124,7 @@ export default function WalletPage() {
       </div>
 
       <div className={styles.tonSection}>
-      {!wallet ? (
+        {!wallet ? (
           <button className={styles.connectButton} onClick={() => tonConnectUI.connectWallet()}>
             <WalletIcon size={20} />
             Connect TON Wallet
@@ -131,7 +139,6 @@ export default function WalletPage() {
             </div>
           </div>
         )}
-
       </div>
 
       <section className={styles.portfolio}>
