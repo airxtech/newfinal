@@ -102,8 +102,12 @@
   }
   
   .confirmButton {
-    background-color: #ef4444;
+    background-color: var(--tg-theme-button-color, #2481cc);
     color: white;
+  }
+  
+  .disconnectButton .confirmButton {
+    background-color: #ef4444;
   }
   
   .cancelButton:hover,
