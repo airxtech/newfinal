@@ -1,20 +1,67 @@
 // app/launchpad/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import styles from './page.module.css'
-import TransactionStrip from '../components/shared/TransactionStrip'
-import TokenCard from '../components/token/TokenCard'
 import { Plus } from 'lucide-react'
+import TransactionStrip from '../components/shared/TransactionStrip'
 
-type ViewType = 'all' | 'hot' | 'new' | 'listed' | 'marketcap' | 'my'
+interface Token {
+  id: string
+  name: string
+  ticker: string
+  logo: string
+  transactions: number
+  daysListed: number
+  priceChange: number
+  bondingProgress: number
+  marketCap: number
+  isGuaranteed: boolean
+}
 
 export default function LaunchpadPage() {
-  const [activeView, setActiveView] = useState<ViewType>('all')
-  const [showCreateForm, setShowCreateForm] = useState(false)
+  const router = useRouter()
+  const [activeView, setActiveView] = useState<'all' | 'hot' | 'new' | 'listed' | 'marketcap' | 'my'>('all')
+  const [tokens, setTokens] = useState<Token[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const handleViewChange = (view: ViewType) => {
-    setActiveView(view)
+  useEffect(() => {
+    fetchTokens()
+  }, [activeView])
+
+  const fetchTokens = async () => {
+    try {
+      const query = activeView !== 'all' ? `?view=${activeView}` : ''
+      const response = await fetch(`/api/tokens${query}`)
+      if (!response.ok) throw new Error('Failed to fetch tokens')
+      const data = await response.json()
+      setTokens(data)
+    } catch (error) {
+      console.error('Error fetching tokens:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const formatValue = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(value)
+  }
+
+  const formatTime = (days: number) => {
+    if (days < 1) {
+      const hours = Math.floor(days * 24)
+      const minutes = Math.floor((days * 24 * 60) % 60)
+      return `${hours}h ${minutes}m`
+    }
+    return `${days} days`
+  }
+
+  if (loading) {
+    return <div className={styles.loading}>Loading...</div>
   }
 
   return (
@@ -23,7 +70,7 @@ export default function LaunchpadPage() {
         <h1>Launchpad</h1>
         <button 
           className={styles.createButton}
-          onClick={() => setShowCreateForm(true)}
+          onClick={() => router.push('/launchpad/create')}
         >
           <Plus size={20} />
           Create Token
@@ -40,7 +87,11 @@ export default function LaunchpadPage() {
           <button
             className={styles.learnMoreButton}
             onClick={() => {
-              // Show popup explaining ZOA Guaranteed tokens
+              window.Telegram.WebApp.showPopup({
+                title: 'ZOA Guaranteed Tokens',
+                message: 'ZOA Guaranteed tokens are specially vetted tokens that undergo thorough due diligence and have locked liquidity. These tokens provide additional security and transparency for investors.',
+                buttons: [{ type: 'close' }]
+              })
             }}
           >
             Coming Soon - Learn More
@@ -54,63 +105,98 @@ export default function LaunchpadPage() {
         <div className={styles.viewSelector}>
           <button 
             className={`${styles.viewButton} ${activeView === 'all' ? styles.active : ''}`}
-            onClick={() => handleViewChange('all')}
+            onClick={() => setActiveView('all')}
           >
             All
           </button>
           <button 
             className={`${styles.viewButton} ${activeView === 'hot' ? styles.active : ''}`}
-            onClick={() => handleViewChange('hot')}
+            onClick={() => setActiveView('hot')}
           >
             Hot 🔥
           </button>
           <button 
             className={`${styles.viewButton} ${activeView === 'new' ? styles.active : ''}`}
-            onClick={() => handleViewChange('new')}
+            onClick={() => setActiveView('new')}
           >
             New
           </button>
           <button 
             className={`${styles.viewButton} ${activeView === 'listed' ? styles.active : ''}`}
-            onClick={() => handleViewChange('listed')}
+            onClick={() => setActiveView('listed')}
           >
             Listed
           </button>
           <button 
             className={`${styles.viewButton} ${activeView === 'marketcap' ? styles.active : ''}`}
-            onClick={() => handleViewChange('marketcap')}
+            onClick={() => setActiveView('marketcap')}
           >
             Market Cap
           </button>
           <button 
             className={`${styles.viewButton} ${activeView === 'my' ? styles.active : ''}`}
-            onClick={() => handleViewChange('my')}
+            onClick={() => setActiveView('my')}
           >
             My Tokens
           </button>
         </div>
 
         <div className={styles.tokenGrid}>
-          {/* Token cards will be mapped here */}
-          <TokenCard
-            name="Sample Token"
-            ticker="SMPL"
-            logo="🚀"
-            transactions={150}
-            daysListed={2}
-            priceChange={12.5}
-            bondingProgress={65}
-            marketCap={25000}
-            onClick={() => {}}
-          />
+          {tokens.map(token => (
+            <div 
+              key={token.id} 
+              className={styles.tokenCard}
+              onClick={() => router.push(`/launchpad/tokens/${token.id}`)}
+            >
+              <div className={styles.header}>
+                <div className={styles.logo}>{token.logo}</div>
+                <div className={styles.nameContainer}>
+                  <h3>{token.name}</h3>
+                  <span className={styles.ticker}>{token.ticker}</span>
+                </div>
+              </div>
+
+              <div className={styles.stats}>
+                <div className={styles.stat}>
+                  <span className={styles.label}>Transactions</span>
+                  <span className={styles.value}>{token.transactions}</span>
+                </div>
+                <div className={styles.stat}>
+                  <span className={styles.label}>Listed</span>
+                  <span className={styles.value}>{formatTime(token.daysListed)}</span>
+                </div>
+              </div>
+
+              <div className={styles.priceChange}>
+                <span 
+                  className={`${styles.change} ${token.priceChange >= 0 ? styles.positive : styles.negative}`}
+                >
+                  {token.priceChange >= 0 ? '+' : ''}{token.priceChange}%
+                </span>
+                <span className={styles.period}>6h</span>
+              </div>
+
+              <div className={styles.bondingCurve}>
+                <div className={styles.progressLabel}>
+                  <span>Bonding Curve</span>
+                  <span>{token.bondingProgress}%</span>
+                </div>
+                <div className={styles.progressBar}>
+                  <div 
+                    className={styles.progress} 
+                    style={{ width: `${token.bondingProgress}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.marketCap}>
+                <span className={styles.label}>Market Cap</span>
+                <span className={styles.value}>{formatValue(token.marketCap)}</span>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
-
-      {showCreateForm && (
-        <div className={styles.modal}>
-          {/* Token creation form will go here */}
-        </div>
-      )}
     </div>
   )
 }
