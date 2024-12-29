@@ -19,14 +19,16 @@ interface Token {
   contractAddress?: string
 }
 
-interface WalletWithBalance {
-  address: string;
-  publicKey: string;
+type WalletWithBalance = ReturnType<typeof useTonWallet> & {
   balance?: string;
+  account?: {
+    balance?: string;
+    address?: string;
+  };
 }
 
 export default function WalletPage() {
-  const wallet = useTonWallet() as unknown as WalletWithBalance;
+  const wallet = useTonWallet() as WalletWithBalance;
   const [tonConnectUI] = useTonConnectUI();
   
   const [user, setUser] = useState<any>(null)
@@ -34,10 +36,43 @@ export default function WalletPage() {
   const [totalValue, setTotalValue] = useState<number>(0)
   const [authorized, setAuthorized] = useState(false)
 
+  // Fetch initial user data
   useEffect(() => {
     console.log('Fetching user data...');
     fetchUserData();
   }, []);
+
+  // Handle wallet connection changes
+  useEffect(() => {
+    if (wallet && user?.telegramId) {
+      console.log('Wallet connected:', wallet);
+      console.log('Wallet account:', wallet.account);
+
+      // Update user's wallet info in database
+      const walletData = {
+        telegramId: user.telegramId,
+        tonBalance: wallet.account?.balance ? Number(wallet.account.balance) / 1e9 : null,
+        walletAddress: wallet.account?.address || null,
+        lastConnected: new Date().toISOString()
+      };
+
+      console.log('Updating wallet data:', walletData);
+
+      fetch('/api/user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(walletData)
+      }).then(response => {
+        console.log('Wallet update response:', response);
+        return response.json();
+      }).then(data => {
+        console.log('Wallet update successful:', data);
+        setUser(data); // Update local user state with new data
+      }).catch(err => {
+        console.error('Error updating wallet info:', err);
+      });
+    }
+  }, [wallet, user?.telegramId]);
 
   const fetchUserData = async () => {
     try {
@@ -106,6 +141,11 @@ export default function WalletPage() {
     window.Telegram.WebApp.openLink(`https://app.ston.fi/swap?token=${contractAddress}`)
   }
 
+  const formatAddress = (address: string) => {
+    if (!address) return '';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  }
+
   console.log('Current user state:', user);
   console.log('Current portfolio:', portfolio);
 
@@ -133,10 +173,15 @@ export default function WalletPage() {
           <div className={styles.tonBalance}>
             <div className={styles.label}>TON Balance</div>
             <div className={styles.value}>
-              {wallet && 'balance' in wallet ? 
-                `${(Number(wallet.balance) / 1e9).toFixed(2)} TON` : 
+              {wallet?.account?.balance ? 
+                `${(Number(wallet.account.balance) / 1e9).toFixed(2)} TON` : 
                 'Loading...'}
             </div>
+            {wallet.account?.address && (
+              <div className={styles.address}>
+                {formatAddress(wallet.account.address)}
+              </div>
+            )}
           </div>
         )}
       </div>
