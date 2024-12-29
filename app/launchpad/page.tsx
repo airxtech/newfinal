@@ -28,14 +28,24 @@ export default function LaunchpadPage() {
 
   useEffect(() => {
     fetchTokens()
-  }, [activeView])
+    // Refetch every 10 seconds to keep the list updated
+  const interval = setInterval(fetchTokens, 10000)
+  return () => clearInterval(interval)
+}, [activeView])
 
   const fetchTokens = async () => {
     try {
+      console.log('Fetching tokens for view:', activeView)
       const query = activeView !== 'all' ? `?view=${activeView}` : ''
       const response = await fetch(`/api/tokens${query}`)
-      if (!response.ok) throw new Error('Failed to fetch tokens')
+      console.log('Token API response:', response)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch tokens: ${response.status}`)
+      }
+      
       const data = await response.json()
+      console.log('Received tokens:', data)
       setTokens(data)
     } catch (error) {
       console.error('Error fetching tokens:', error)

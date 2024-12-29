@@ -2,54 +2,122 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   try {
-    const body = await request.json()
-    const { 
-      name, 
-      ticker, 
-      description, 
-      imageUrl,
-      website,
-      twitter,
-      telegram,
-      creatorId,
-      paymentTxHash  // Transaction hash from TON payment
-    } = body
+    const { searchParams } = new URL(request.url)
+    const view = searchParams.get('view')
+    const userId = searchParams.get('userId')
 
-    // Verify TON payment
-    if (!paymentTxHash) {
-      return NextResponse.json(
-        { error: 'Payment required' },
-        { status: 400 }
-      )
+    let tokens
+    
+    switch (view) {
+      case 'hot':
+        // Sort by bonding curve rate increase in last 10 minutes
+        tokens = await prisma.token.findMany({
+          orderBy: {
+            bondingCurve: 'desc'
+          }
+        })
+        break
+
+      case 'new':
+        // Sort by creation date
+        tokens = await prisma.token.findMany({
+          orderBy: {
+            createdAt: 'desc'
+          }
+        })
+        break
+
+      case 'listed':
+        // Show only fully listed tokens
+        tokens = await prisma.token.findMany({
+          where: {
+            isListed: true
+          },
+          orderBy: {
+            listingDate: 'desc'
+          }
+        })
+        break
+
+      case 'marketcap':
+        // Sort by bonding curve completion but exclude 100% completed
+        tokens = await prisma.token.findMany({
+          where: {
+            bondingCurve: {
+              lt: 100
+            }
+          },
+          orderBy: {
+            marketCap: 'desc'
+          }
+        })
+        break
+
+      case 'my':
+        // Show user's created tokens and holdings
+        if (!userId) {
+          return NextResponse.json(
+            { error: 'User ID required for my tokens view' },
+            { status: 400 }
+          )
+        }
+        tokens = await prisma.token.findMany({
+          where: {
+            OR: [
+              { creatorId: userId },
+              {
+                holders: {
+                  some: {
+                    userId: userId
+                  }
+                }
+              }
+            ]
+          }
+        })
+        break
+
+      default:
+        // 'all' view - sort by hot tokens by default
+        tokens = await prisma.token.findMany({
+          orderBy: {
+            bondingCurve: 'desc'
+          }
+        })
     }
 
-    // Create token
-    const token = await prisma.token.create({
-      data: {
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name,
-        ticker: ticker.toUpperCase(),
-        description,
-        imageUrl,
-        website,
-        twitter,
-        telegram,
-        creatorId,
-        currentPrice: 0.001, // Initial price
-        marketCap: 0,
-        bondingCurve: 0,
-        totalSupply: 300000000, // 300M tokens
-        isGuaranteed: false
+    // Calculate additional fields
+    const enrichedTokens = tokens.map(token => {
+      const createdDate = new Date(token.createdAt)
+      const now = new Date()
+      const daysListed = (now.getTime() - createdDate.getTime()) / (1000 * 3600 * 24)
+
+      return {
+        ...token,
+        daysListed,
+        priceChange: 0, // TODO: Calculate from transaction history
+        transactions: 0, // TODO: Count from transaction history
       }
     })
 
-    return NextResponse.json(token)
+    // For 'all' view, make tokens rotate by updating order every minute
+    if (!view || view === 'all') {
+      const minute = Math.floor(Date.now() / 60000)
+      const rotateAmount = minute % enrichedTokens.length
+      const rotatedTokens = [
+        ...enrichedTokens.slice(rotateAmount),
+        ...enrichedTokens.slice(0, rotateAmount)
+      ]
+      return NextResponse.json(rotatedTokens)
+    }
+
+    return NextResponse.json(enrichedTokens)
   } catch (error) {
-    console.error('Token creation error:', error)
+    console.error('Error fetching tokens:', error)
     return NextResponse.json(
-      { error: 'Failed to create token' },
+      { error: 'Failed to fetch tokens' },
       { status: 500 }
     )
   }
