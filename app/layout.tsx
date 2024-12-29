@@ -32,15 +32,6 @@ export default function RootLayout({
                 universalLink: "https://t.me/wallet?attach=wallet",
                 bridgeUrl: "https://bridge.ton.space/bridge",
                 platforms: ["ios", "android", "macos", "windows", "linux"]
-              },
-              {
-                appName: "tonkeeper",
-                name: "Tonkeeper",
-                imageUrl: "https://raw.githubusercontent.com/ton-blockchain/tonkeeper-web/master/app/public/assets/tonkeeper-wallet-logo.png",
-                aboutUrl: "https://tonkeeper.com",
-                universalLink: "https://app.tonkeeper.com/ton-connect",
-                bridgeUrl: "https://bridge.tonapi.io/bridge",
-                platforms: ["ios", "android", "chrome"]
               }
             ]
           }}
