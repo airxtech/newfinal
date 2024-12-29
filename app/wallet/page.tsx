@@ -143,8 +143,28 @@ export default function WalletPage() {
 
   const formatAddress = (address: string) => {
     if (!address) return '';
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  }
+
+    // Convert raw address to user-friendly format
+    // Raw format: 0:abc...def
+    // User-friendly format: EQC...xyz
+    try {
+      // Remove workchain prefix (0:) if exists
+      const rawAddress = address.startsWith('0:') ? address.slice(2) : address;
+      
+      // Convert to base64url
+      const buffer = Buffer.from(rawAddress, 'hex');
+      const base64 = buffer.toString('base64url');
+      
+      // Add bounceable prefix
+      const friendlyAddress = 'EQ' + base64;
+      
+      // Return shortened version
+      return `${friendlyAddress.slice(0, 6)}...${friendlyAddress.slice(-4)}`;
+    } catch (error) {
+      console.error('Error formatting address:', error);
+      return address.slice(0, 6) + '...' + address.slice(-4);
+    }
+  } 
 
   console.log('Current user state:', user);
   console.log('Current portfolio:', portfolio);
