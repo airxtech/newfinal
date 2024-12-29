@@ -173,9 +173,9 @@ export default function WalletPage() {
           <div className={styles.tonBalance}>
             <div className={styles.label}>TON Balance</div>
             <div className={styles.value}>
-              {wallet?.account?.balance ? 
+              {wallet?.account?.balance !== undefined ? 
                 `${(Number(wallet.account.balance) / 1e9).toFixed(2)} TON` : 
-                'Loading...'}
+                '0.00 TON'}
             </div>
             {wallet.account?.address && (
               <div className={styles.address}>
