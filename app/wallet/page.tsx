@@ -6,6 +6,7 @@ import styles from './page.module.css'
 import { Wallet as WalletIcon } from 'lucide-react'
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react'
 import { TonProofApi } from '../lib/ton-proof-api'
+import { toUserFriendlyAddress } from '@tonconnect/sdk';
 
 interface Token {
   id: string
@@ -191,7 +192,7 @@ export default function WalletPage() {
             </div>
             {wallet.account?.address && (
               <div className={styles.address} title={wallet.account.address}>
-                {`${formatAddress(wallet.account.address).slice(0, 6)}...${formatAddress(wallet.account.address).slice(-4)}`}
+                {`${toUserFriendlyAddress(wallet.account.address).slice(0, 6)}...${toUserFriendlyAddress(wallet.account.address).slice(-4)}`}
               </div>
             )}
           </div>
