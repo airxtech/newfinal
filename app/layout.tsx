@@ -36,7 +36,7 @@ export default function RootLayout({
               {
                 appName: "tonkeeper",
                 name: "Tonkeeper",
-                imageUrl: "https://tonkeeper.com/assets/tonkeeper-wallet-logo.png",
+                imageUrl: "https://raw.githubusercontent.com/ton-blockchain/tonkeeper-web/master/app/public/assets/tonkeeper-wallet-logo.png",
                 aboutUrl: "https://tonkeeper.com",
                 universalLink: "https://app.tonkeeper.com/ton-connect",
                 bridgeUrl: "https://bridge.tonapi.io/bridge",

@@ -7,6 +7,8 @@ import { Wallet as WalletIcon } from 'lucide-react'
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react'
 import { TonProofApi } from '../lib/ton-proof-api'
 import { toUserFriendlyAddress } from '@tonconnect/sdk';
+import { WalletButton } from '@/app/components/shared/WalletButton';
+
 
 interface Token {
   id: string
@@ -177,17 +179,13 @@ export default function WalletPage() {
       </div>
 
       <div className={styles.tonSection}>
-        {!wallet ? (
-          <button className={styles.connectButton} onClick={() => tonConnectUI.connectWallet()}>
-            <WalletIcon size={20} />
-            Connect TON Wallet
-          </button>
-        ) : (
+      <WalletButton />
+        {wallet && (
           <div className={styles.tonBalance}>
             <div className={styles.label}>TON Balance</div>
             <div className={styles.value}>
               {wallet?.account?.balance !== undefined ? 
-                `${(Number(wallet.account.balance) / 1e9).toFixed(2)} TON` : 
+                `${Number(BigInt(wallet.account.balance) / BigInt(1e9)).toFixed(2)} TON` : 
                 '0.00 TON'}
             </div>
             {wallet.account?.address && (
@@ -198,6 +196,8 @@ export default function WalletPage() {
           </div>
         )}
       </div>
+
+      
 
       <section className={styles.portfolio}>
         <h2>Token Portfolio</h2>
