@@ -91,7 +91,7 @@
   background: transparent;
   border-radius: 50%;
   border: 1.8px solid var(--tg-theme-button-text-color, #ffffff);
-  transform: translateY(-32px) scale(0); /* Adjusted from -37px */
+  transform: translateY(-29px) scale(0); /* Adjusted from -37px */
 }
 
 .active .circle {
