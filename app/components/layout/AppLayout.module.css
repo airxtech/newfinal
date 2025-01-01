@@ -9,33 +9,31 @@
 .main {
   flex: 1;
   padding: 20px;
-  padding-bottom: 100px;
+  padding-bottom: 90px;
   width: 100%;
   margin: 0 auto;
 }
 
 .navigation {
   position: fixed;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 32px);
-  max-width: 400px;
-  height: 70px;
-  background: linear-gradient(45deg, var(--tg-theme-button-color, #2481cc), #2481cc);
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 85px;
+  background: var(--tg-theme-button-color, #2481cc);
   display: flex;
   justify-content: center;
   align-items: center;
-  border-radius: 35px;
-  z-index: 1000;
 }
 
-.navigation ul {
+.navigationList {
   display: flex;
   width: 350px;
+  margin: 0;
+  padding: 0;
 }
 
-.navigation ul li {
+.navItem {
   position: relative;
   width: 70px;
   height: 70px;
@@ -43,7 +41,7 @@
   z-index: 1;
 }
 
-.navigation ul li a {
+.navLink {
   position: relative;
   display: flex;
   justify-content: center;
@@ -52,40 +50,39 @@
   width: 100%;
   text-align: center;
   font-weight: 500;
-  cursor: pointer;
 }
 
-.navigation ul li a .icon {
+.icon {
   position: relative;
   display: block;
   line-height: 75px;
-  font-size: 1.5em;
+  font-size: 24px;
   text-align: center;
   color: var(--tg-theme-button-text-color, #ffffff);
   transition: .5s;
 }
 
-.navigation ul li.active a .icon {
+.active .icon {
   transform: translateY(-32px);
 }
 
-.navigation ul li a .text {
+.text {
   position: absolute;
   color: var(--tg-theme-button-text-color, #ffffff);
   font-weight: 400;
-  font-size: .75em;
+  font-size: 12px;
   letter-spacing: .05em;
   opacity: 0;
   transform: translateY(20px);
   transition: .5s;
 }
 
-.navigation ul li.active a .text {
+.active .text {
   opacity: 1;
   transform: translateY(10px);
 }
 
-.navigation ul li a .circle {
+.circle {
   position: absolute;
   display: block;
   width: 50px;
@@ -96,7 +93,7 @@
   transform: translateY(-37px) scale(0);
 }
 
-.navigation ul li.active a .circle {
+.active .circle {
   transition: .5s;
   transition-delay: .5s;
   transform: translateY(-37px) scale(1);
@@ -107,7 +104,7 @@
   top: -50%;
   width: 70px;
   height: 70px;
-  background: linear-gradient(45deg, var(--tg-theme-button-color, #2481cc), #2481cc);
+  background: var(--tg-theme-button-color, #2481cc);
   border: 6px solid var(--tg-theme-bg-color, #ffffff);
   border-radius: 50%;
   transition: .5s;
@@ -137,35 +134,22 @@
   box-shadow: -1px -10px 0 var(--tg-theme-bg-color, #ffffff);
 }
 
-.navigation ul li:nth-child(1).active ~ .indicator {
+.navItem:nth-child(1).active ~ .indicator {
   transform: translateX(calc(70px * 0));
 }
 
-.navigation ul li:nth-child(2).active ~ .indicator {
+.navItem:nth-child(2).active ~ .indicator {
   transform: translateX(calc(70px * 1));
 }
 
-.navigation ul li:nth-child(3).active ~ .indicator {
+.navItem:nth-child(3).active ~ .indicator {
   transform: translateX(calc(70px * 2));
 }
 
-.navigation ul li:nth-child(4).active ~ .indicator {
+.navItem:nth-child(4).active ~ .indicator {
   transform: translateX(calc(70px * 3));
 }
 
-.navigation ul li:nth-child(5).active ~ .indicator {
+.navItem:nth-child(5).active ~ .indicator {
   transform: translateX(calc(70px * 4));
-}
-
-.loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  gap: 16px;
-  padding: 20px;
-  text-align: center;
-  color: var(--tg-theme-hint-color, #999999);
-  background-color: var(--tg-theme-bg-color, #ffffff);
 }

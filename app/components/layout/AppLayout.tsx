@@ -1,3 +1,4 @@
+// app/components/layout/AppLayout.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -22,14 +23,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [user, setUser] = useState<any>(null)
   const [initStatus, setInitStatus] = useState<string>('initial')
 
-  const navigation = [
-    { name: 'Home', path: '/', icon: Home },
-    { name: 'Earn', path: '/earn', icon: Coins },
-    { name: 'Launchpad', path: '/launchpad', icon: Rocket },
-    { name: 'Tasks', path: '/tasks', icon: CheckSquare },
-    { name: 'Wallet', path: '/wallet', icon: Wallet }
-  ]
-
   useEffect(() => {
     setIsClient(true)
     const waitForTelegram = () => {
@@ -41,6 +34,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
     waitForTelegram()
   }, [])
+
+  const navigation = [
+    { name: 'Home', path: '/', icon: Home },
+    { name: 'Earn', path: '/earn', icon: Coins },
+    { name: 'Launchpad', path: '/launchpad', icon: Rocket },
+    { name: 'Tasks', path: '/tasks', icon: CheckSquare },
+    { name: 'Wallet', path: '/wallet', icon: Wallet }
+  ]
 
   const initTelegram = () => {
     try {
@@ -64,6 +65,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const validateUser = async (userData: any) => {
     try {
       const response = await fetch(`/api/user?telegramId=${userData.id}`)
+      if (!response.ok && response.status !== 404) {
+        throw new Error('Failed to fetch user data')
+      }
+
       if (response.status === 404) {
         await fetch('/api/user', {
           method: 'POST',
@@ -81,16 +86,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
-  const handleNavigation = (path: string) => {
-    const listItems = document.querySelectorAll('li');
-    listItems.forEach(item => item.classList.remove('active'));
-    const activeItem = document.querySelector(`li[data-path="${path}"]`);
-    if (activeItem) {
-      activeItem.classList.add('active');
-    }
-    router.push(path);
-  };
-
   if (!isClient) {
     return <div className={styles.loading}>Initializing...</div>
   }
@@ -100,7 +95,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <div className={styles.loading}>
         <h2>Loading ZOA.fund</h2>
         <p>Status: {initStatus}</p>
-        <div className={styles.hint}>Please open this app through Telegram</div>
+        <div className={styles.hint}>
+          Please open this app through Telegram
+        </div>
       </div>
     )
   }
@@ -110,15 +107,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <main className={styles.main}>{children}</main>
       
       <nav className={styles.navigation}>
-        <ul>
+        <ul className={styles.navigationList}>
           {navigation.map((item) => {
-            const Icon = item.icon;
+            const Icon = item.icon
+            const isActive = pathname === item.path
             return (
-              <li 
+              <li
                 key={item.path}
-                className={`list ${pathname === item.path ? 'active' : ''}`}
+                className={`${styles.navItem} ${isActive ? styles.active : ''}`}
+                onClick={() => router.push(item.path)}
               >
-                <a onClick={() => router.push(item.path)}>
+                <a className={styles.navLink}>
                   <span className={styles.icon}>
                     <Icon size={24} />
                   </span>
@@ -126,7 +125,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   <span className={styles.circle}></span>
                 </a>
               </li>
-            );
+            )
           })}
           <div className={styles.indicator}></div>
         </ul>
