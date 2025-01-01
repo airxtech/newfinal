@@ -1,17 +1,15 @@
-// app/components/layout/AppLayout.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import styles from './AppLayout.module.css'
+import { Home, Coins, Rocket, CheckSquare, Wallet } from 'lucide-react'
 
-// Extend the Window interface to include Telegram
 declare global {
   interface Window {
     Telegram: any;
   }
 }
-import { useRouter, usePathname } from 'next/navigation'
-import styles from './AppLayout.module.css'
-import { Home, Coins, Rocket, CheckSquare, Wallet } from 'lucide-react'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -23,6 +21,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [isClient, setIsClient] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [initStatus, setInitStatus] = useState<string>('initial')
+
+  const navigation = [
+    { name: 'Home', path: '/', icon: Home },
+    { name: 'Earn', path: '/earn', icon: Coins },
+    { name: 'Launchpad', path: '/launchpad', icon: Rocket },
+    { name: 'Tasks', path: '/tasks', icon: CheckSquare },
+    { name: 'Wallet', path: '/wallet', icon: Wallet }
+  ]
 
   useEffect(() => {
     setIsClient(true)
@@ -39,19 +45,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const initTelegram = () => {
     try {
       const webApp = window.Telegram.WebApp
-      console.log('WebApp object:', webApp)
-      
       webApp.ready()
       webApp.expand()
 
       if (webApp.initDataUnsafe?.user) {
-        const userData = webApp.initDataUnsafe.user
-        console.log('User data:', userData)
-        setUser(userData)
+        setUser(webApp.initDataUnsafe.user)
         setInitStatus('loaded')
-        validateUser(userData)
+        validateUser(webApp.initDataUnsafe.user)
       } else {
-        console.log('No user data found')
         setInitStatus('no-user')
       }
     } catch (error) {
@@ -63,13 +64,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const validateUser = async (userData: any) => {
     try {
       const response = await fetch(`/api/user?telegramId=${userData.id}`)
-      if (!response.ok && response.status !== 404) {
-        throw new Error('Failed to fetch user data')
-      }
-
-      const data = await response.json()
       if (response.status === 404) {
-        const createResponse = await fetch('/api/user', {
+        await fetch('/api/user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -79,23 +75,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
             username: userData.username || ''
           })
         })
-
-        if (!createResponse.ok) {
-          throw new Error('Failed to create user')
-        }
       }
     } catch (error) {
       console.error('Error in validateUser:', error)
     }
   }
 
-  const navigation = [
-    { name: 'Home', path: '/', icon: Home },
-    { name: 'Earn', path: '/earn', icon: Coins },
-    { name: 'Launchpad', path: '/launchpad', icon: Rocket },
-    { name: 'Tasks', path: '/tasks', icon: CheckSquare },
-    { name: 'Wallet', path: '/wallet', icon: Wallet }
-  ]
+  const handleNavigation = (path: string) => {
+    const listItems = document.querySelectorAll('li');
+    listItems.forEach(item => item.classList.remove('active'));
+    const activeItem = document.querySelector(`li[data-path="${path}"]`);
+    if (activeItem) {
+      activeItem.classList.add('active');
+    }
+    router.push(path);
+  };
 
   if (!isClient) {
     return <div className={styles.loading}>Initializing...</div>
@@ -106,9 +100,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <div className={styles.loading}>
         <h2>Loading ZOA.fund</h2>
         <p>Status: {initStatus}</p>
-        <div className={styles.hint}>
-          Please open this app through Telegram
-        </div>
+        <div className={styles.hint}>Please open this app through Telegram</div>
       </div>
     )
   }
@@ -119,17 +111,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
       
       <nav className={styles.navigation}>
         <ul>
-          {navigation.map((item, index) => {
+          {navigation.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.path;
             return (
-              <li key={item.path} className={isActive ? 'active' : ''}>
+              <li 
+                key={item.path} 
+                className={isActive ? 'active' : ''} 
+                data-path={item.path}
+              >
                 <button
-                  onClick={() => router.push(item.path)}
+                  onClick={() => handleNavigation(item.path)}
                   className={styles.navButton}
                 >
                   <span className={styles.icon}>
-                    <Icon size={24} />
+                    <Icon strokeWidth={isActive ? 3 : 2} size={24} />
                   </span>
                   <span className={styles.text}>{item.name}</span>
                   <span className={styles.circle}></span>

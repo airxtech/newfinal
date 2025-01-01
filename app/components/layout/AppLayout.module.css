@@ -65,17 +65,43 @@
   display: block;
   line-height: 75px;
   color: var(--tg-theme-button-text-color, #ffffff);
-  transition: 0.5s;
+  transition: transform 0.5s ease;
+  z-index: 2;
 }
 
 .text {
   position: absolute;
+  bottom: 8px;
   color: var(--tg-theme-button-text-color, #ffffff);
   font-size: 12px;
+  font-weight: 500;
   letter-spacing: 0.05em;
   opacity: 0;
   transform: translateY(20px);
-  transition: 0.5s;
+  transition: all 0.5s ease;
+}
+
+.active .icon {
+  transform: translateY(-32px);
+  transition-delay: 0.25s;
+}
+
+.active .text {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.25s;
+}
+
+.indicator {
+  position: absolute;
+  top: -50%;
+  left: calc(10%);
+  width: 70px;
+  height: 70px;
+  background: linear-gradient(45deg, var(--tg-theme-button-color, #2481cc), #2481cc);
+  border: 6px solid var(--tg-theme-bg-color, #ffffff);
+  border-radius: 50%;
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .circle {
@@ -90,28 +116,8 @@
   transition: 0.5s;
 }
 
-.active .icon {
-  transform: translateY(-32px);
-}
-
-.active .text {
-  opacity: 1;
-  transform: translateY(10px);
-}
-
 .active .circle {
   transform: translateY(-37px) scale(1);
-}
-
-.indicator {
-  position: absolute;
-  top: -50%;
-  width: 70px;
-  height: 70px;
-  background: linear-gradient(45deg, var(--tg-theme-button-color, #2481cc), #2481cc);
-  border: 6px solid var(--tg-theme-bg-color, #ffffff);
-  border-radius: 50%;
-  transition: 0.5s;
 }
 
 .indicator::before {
