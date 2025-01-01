@@ -74,7 +74,7 @@
   font-size: 13px; /* Increased from 12px */
   letter-spacing: 0.02em;
   opacity: 0;
-  transform: translateY(15px);
+  transform: translateY(20px);
   transition: .5s;
 }
 
@@ -91,18 +91,18 @@
   background: transparent;
   border-radius: 50%;
   border: 1.8px solid var(--tg-theme-button-text-color, #ffffff);
-  transform: translateY(-28px) scale(0); /* Adjusted from -37px */
+  transform: translateY(-32px) scale(0); /* Adjusted from -37px */
 }
 
 .active .circle {
   transition: .5s;
   transition-delay: .5s;
-  transform: translateY(-28px) scale(1); /* Adjusted from -37px */
+  transform: translateY(-32px) scale(1); /* Adjusted from -37px */
 }
 
 .indicator {
   position: absolute;
-  top: -35px; /* Adjusted from -50% */
+  top: -32px; /* Adjusted from -50% */
   width: 70px;
   height: 70px;
   background: var(--tg-theme-button-color, #2481cc);
