@@ -16,10 +16,10 @@
 
 .navigation {
   position: fixed;
-  bottom: 0;
+  bottom: 10px;
   left: 0;
   right: 0;
-  height: 85px;
+  height: 70px;
   background: var(--tg-theme-button-color, #2481cc);
   display: flex;
   justify-content: center;
