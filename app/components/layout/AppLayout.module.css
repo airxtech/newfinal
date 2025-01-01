@@ -74,13 +74,13 @@
   font-size: 13px; /* Increased from 12px */
   letter-spacing: 0.02em;
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(20px);
   transition: .5s;
 }
 
 .active .text {
   opacity: 1;
-  transform: translateY(10px);
+  transform: translateY(1px);
 }
 
 .circle {
@@ -114,7 +114,7 @@
 .indicator::before {
   content: '';
   position: absolute;
-  top: 45%;
+  top: 47%;
   left: -22px;
   width: 20px;
   height: 20px;
@@ -126,7 +126,7 @@
 .indicator::after {
   content: '';
   position: absolute;
-  top: 45%;
+  top: 47%;
   right: -22px;
   width: 20px;
   height: 20px;
