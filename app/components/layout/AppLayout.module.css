@@ -19,11 +19,12 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 85px;
+  height: 83px;
   background: var(--tg-theme-button-color, #2481cc);
   display: flex;
   justify-content: center;
   align-items: center;
+  border-radius: 20px;
 }
 
 .navigationList {
@@ -105,7 +106,7 @@
   top: -32px; /* Adjusted from -50% */
   width: 70px;
   height: 70px;
-  background: var(--tg-theme-button-color, #2481cc);
+  background: var(--tg-theme-button-color, #924DBF);
   border: 6px solid var(--tg-theme-bg-color, #ffffff);
   border-radius: 50%;
   transition: .5s;
@@ -115,7 +116,7 @@
   content: '';
   position: absolute;
   top: 50%;
-  left: -20px;
+  left: -22px;
   width: 20px;
   height: 20px;
   background: transparent;
@@ -127,7 +128,7 @@
   content: '';
   position: absolute;
   top: 50%;
-  right: -20px;
+  right: -22px;
   width: 20px;
   height: 20px;
   background: transparent;
