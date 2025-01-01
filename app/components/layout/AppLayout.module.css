@@ -50,13 +50,14 @@
   width: 100%;
   text-align: center;
   font-weight: 500;
+  transform: translateY(-8px); /* Added to move everything up slightly */
 }
 
 .icon {
   position: relative;
   display: block;
   line-height: 75px;
-  font-size: 24px;
+  font-size: 26px; /* Increased from 24px */
   text-align: center;
   color: var(--tg-theme-button-text-color, #ffffff);
   transition: .5s;
@@ -69,9 +70,9 @@
 .text {
   position: absolute;
   color: var(--tg-theme-button-text-color, #ffffff);
-  font-weight: 400;
-  font-size: 12px;
-  letter-spacing: .05em;
+  font-weight: 500; /* Increased from 400 */
+  font-size: 13px; /* Increased from 12px */
+  letter-spacing: 0.02em;
   opacity: 0;
   transform: translateY(20px);
   transition: .5s;
@@ -90,18 +91,18 @@
   background: transparent;
   border-radius: 50%;
   border: 1.8px solid var(--tg-theme-button-text-color, #ffffff);
-  transform: translateY(-37px) scale(0);
+  transform: translateY(-32px) scale(0); /* Adjusted from -37px */
 }
 
 .active .circle {
   transition: .5s;
   transition-delay: .5s;
-  transform: translateY(-37px) scale(1);
+  transform: translateY(-32px) scale(1); /* Adjusted from -37px */
 }
 
 .indicator {
   position: absolute;
-  top: -50%;
+  top: -35px; /* Adjusted from -50% */
   width: 70px;
   height: 70px;
   background: var(--tg-theme-button-color, #2481cc);
