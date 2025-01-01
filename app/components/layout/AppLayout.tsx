@@ -113,23 +113,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <ul>
           {navigation.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.path;
             return (
               <li 
-                key={item.path} 
-                className={isActive ? 'active' : ''} 
-                data-path={item.path}
+                key={item.path}
+                className={`list ${pathname === item.path ? 'active' : ''}`}
               >
-                <button
-                  onClick={() => handleNavigation(item.path)}
-                  className={styles.navButton}
-                >
+                <a onClick={() => router.push(item.path)}>
                   <span className={styles.icon}>
-                    <Icon strokeWidth={isActive ? 3 : 2} size={24} />
+                    <Icon size={24} />
                   </span>
                   <span className={styles.text}>{item.name}</span>
                   <span className={styles.circle}></span>
-                </button>
+                </a>
               </li>
             );
           })}
