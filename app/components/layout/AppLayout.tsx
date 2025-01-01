@@ -118,21 +118,27 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <main className={styles.main}>{children}</main>
       
       <nav className={styles.navigation}>
-        {navigation.map((item) => {
-          const Icon = item.icon
-          return (
-            <button
-              key={item.path}
-              onClick={() => router.push(item.path)}
-              className={`${styles.navButton} ${
-                pathname === item.path ? styles.active : ''
-              }`}
-            >
-              <Icon size={20} />
-              <span>{item.name}</span>
-            </button>
-          )
-        })}
+        <ul>
+          {navigation.map((item, index) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.path;
+            return (
+              <li key={item.path} className={isActive ? 'active' : ''}>
+                <button
+                  onClick={() => router.push(item.path)}
+                  className={styles.navButton}
+                >
+                  <span className={styles.icon}>
+                    <Icon size={24} />
+                  </span>
+                  <span className={styles.text}>{item.name}</span>
+                  <span className={styles.circle}></span>
+                </button>
+              </li>
+            );
+          })}
+          <div className={styles.indicator}></div>
+        </ul>
       </nav>
     </div>
   )
