@@ -57,7 +57,7 @@
 .icon {
   position: relative;
   display: block;
-  line-height: 75px;
+  line-height: 55px;
   font-size: 26px; /* Increased from 24px */
   text-align: center;
   color: var(--tg-theme-button-text-color, #ffffff);
@@ -92,13 +92,13 @@
   background: transparent;
   border-radius: 50%;
   border: 1.8px solid var(--tg-theme-button-text-color, #ffffff);
-  transform: translateY(-32px) scale(0); /* Adjusted from -37px */
+  transform: translateY(-30px) scale(0); /* Adjusted from -37px */
 }
 
 .active .circle {
   transition: .5s;
   transition-delay: .5s;
-  transform: translateY(-34px) scale(1); /* Adjusted from -37px */
+  transform: translateY(-30px) scale(1); /* Adjusted from -37px */
 }
 
 .indicator {
@@ -106,7 +106,7 @@
   top: -32px; /* Adjusted from -50% */
   width: 70px;
   height: 70px;
-  background: var(--tg-theme-button-color, #924DBF);
+  background: #924DBF;
   border: 6px solid var(--tg-theme-bg-color, #ffffff);
   border-radius: 50%;
   transition: .5s;
