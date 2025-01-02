@@ -1,24 +1,30 @@
+/* app/components/layout/AppLayout.module.css */
 .container {
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  overflow: hidden;
+  width: 100vw;
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
   background-color: var(--tg-theme-bg-color, #ffffff);
   color: var(--tg-theme-text-color, #000000);
+  overflow: hidden;
 }
 
 .header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  background-color: var(--tg-theme-bg-color, #ffffff);
-  z-index: 10;
   height: 60px;
+  padding: 0 16px;
+  background-color: var(--tg-theme-bg-color, #ffffff);
+  z-index: 100;
+  border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #f0f0f0);
 }
 
 .backButton {
@@ -38,8 +44,9 @@
   font-size: 20px;
   font-weight: 600;
   margin: 0;
-  flex: 1;
-  text-align: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .placeholder {
@@ -48,14 +55,17 @@
 
 .main {
   flex: 1;
+  margin-top: 60px;
   padding: 20px;
-  padding-bottom: 90px;
+  padding-bottom: calc(90px + env(safe-area-inset-bottom));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  position: relative;
+  height: calc(100dvh - 60px);
 }
 
 .navigation {
-  position: absolute;
+  position: fixed;
   bottom: max(10px, env(safe-area-inset-bottom));
   left: 10px;
   right: 10px;
@@ -65,7 +75,8 @@
   justify-content: center;
   align-items: center;
   border-radius: 20px;
-  pointer-events: auto;
+  z-index: 100;
+  pointer-events: none;
 }
 
 .navigationList {
@@ -73,6 +84,7 @@
   width: 350px;
   margin: 0;
   padding: 0;
+  pointer-events: auto;
 }
 
 .navItem {
@@ -92,14 +104,14 @@
   width: 100%;
   text-align: center;
   font-weight: 500;
-  transform: translateY(-8px); /* Added to move everything up slightly */
+  transform: translateY(-8px);
 }
 
 .icon {
   position: relative;
   display: block;
   line-height: 95px;
-  font-size: 26px; /* Increased from 24px */
+  font-size: 26px;
   text-align: center;
   color: var(--tg-theme-button-text-color, #ffffff);
   transition: .5s;
@@ -112,8 +124,8 @@
 .text {
   position: absolute;
   color: var(--tg-theme-button-text-color, #ffffff);
-  font-weight: 500; /* Increased from 400 */
-  font-size: 13px; /* Increased from 12px */
+  font-weight: 500;
+  font-size: 13px;
   letter-spacing: 0.02em;
   opacity: 0;
   transform: translateY(25px);
@@ -133,21 +145,21 @@
   background: transparent;
   border-radius: 50%;
   border: 1.8px solid var(--tg-theme-button-text-color, #ffffff);
-  transform: translateY(-36px) scale(0); /* Adjusted from -37px */
+  transform: translateY(-36px) scale(0);
 }
 
 .active .circle {
   transition: .5s;
   transition-delay: .5s;
-  transform: translateY(-36px) scale(1); /* Adjusted from -37px */
+  transform: translateY(-36px) scale(1);
 }
 
 .indicator {
   position: absolute;
-  top: -32px; /* Adjusted from -50% */
+  top: -32px;
   width: 70px;
   height: 70px;
-  background:rgb(0, 255, 72);
+  background: rgb(0, 255, 72);
   border: 6px solid var(--tg-theme-bg-color, #ffffff);
   border-radius: 50%;
   transition: .5s;
@@ -201,13 +213,18 @@
   padding-bottom: 20px;
 }
 
-@supports (padding: max(0px)) {
-  .navigation {
-    bottom: max(10px, env(safe-area-inset-bottom));
-    margin: 0 10px;
-  }
+/* Loading state styles */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  background-color: var(--tg-theme-bg-color, #ffffff);
+  color: var(--tg-theme-text-color, #000000);
+}
 
-  .main {
-    padding-bottom: max(90px, calc(90px + env(safe-area-inset-bottom)));
-  }
+.hint {
+  margin-top: 12px;
+  color: var(--tg-theme-hint-color, #999999);
 }
