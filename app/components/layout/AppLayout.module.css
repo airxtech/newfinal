@@ -159,3 +159,14 @@
 .noNav {
   padding-bottom: 20px;
 }
+
+@supports (padding: max(0px)) {
+  .navigation {
+    bottom: max(10px, env(safe-area-inset-bottom));
+    margin: 0 10px;
+  }
+
+  .main {
+    padding-bottom: max(90px, calc(90px + env(safe-area-inset-bottom)));
+  }
+}
