@@ -75,13 +75,13 @@
   font-size: 13px; /* Increased from 12px */
   letter-spacing: 0.02em;
   opacity: 0;
-  transform: translateY(30px);
+  transform: translateY(25px);
   transition: .5s;
 }
 
 .active .text {
   opacity: 1;
-  transform: translateY(20px);
+  transform: translateY(15px);
 }
 
 .circle {
