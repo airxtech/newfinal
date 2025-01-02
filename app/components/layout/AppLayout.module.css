@@ -57,7 +57,7 @@
 .icon {
   position: relative;
   display: block;
-  line-height: 55px;
+  line-height: 95px;
   font-size: 26px; /* Increased from 24px */
   text-align: center;
   color: var(--tg-theme-button-text-color, #ffffff);
