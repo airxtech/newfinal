@@ -102,34 +102,44 @@ export default function AppLayout({ children }: AppLayoutProps) {
     )
   }
 
+  // Add this function to hide navigation on specific pages
+  const shouldShowNavigation = () => {
+    const mainPages = ['/', '/earn', '/launchpad', '/tasks', '/wallet'];
+    return mainPages.includes(pathname);
+  }
+
   return (
     <div className={styles.container}>
-      <main className={styles.main}>{children}</main>
+      <main className={`${styles.main} ${!shouldShowNavigation() ? styles.noNav : ''}`}>
+        {children}
+      </main>
       
-      <nav className={styles.navigation}>
-        <ul className={styles.navigationList}>
-          {navigation.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname === item.path
-            return (
-              <li
-                key={item.path}
-                className={`${styles.navItem} ${isActive ? styles.active : ''}`}
-                onClick={() => router.push(item.path)}
-              >
-                <a className={styles.navLink}>
-                  <span className={styles.icon}>
-                    <Icon size={24} />
-                  </span>
-                  <span className={styles.text}>{item.name}</span>
-                  <span className={styles.circle}></span>
-                </a>
-              </li>
-            )
-          })}
-          <div className={styles.indicator}></div>
-        </ul>
-      </nav>
+      {shouldShowNavigation() && (
+        <nav className={styles.navigation}>
+          <ul className={styles.navigationList}>
+            {navigation.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.path
+              return (
+                <li
+                  key={item.path}
+                  className={`${styles.navItem} ${isActive ? styles.active : ''}`}
+                  onClick={() => router.push(item.path)}
+                >
+                  <a className={styles.navLink}>
+                    <span className={styles.icon}>
+                      <Icon size={24} />
+                    </span>
+                    <span className={styles.text}>{item.name}</span>
+                    <span className={styles.circle}></span>
+                  </a>
+                </li>
+              )
+            })}
+            <div className={styles.indicator}></div>
+          </ul>
+        </nav>
+      )}
     </div>
   )
 }

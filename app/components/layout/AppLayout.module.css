@@ -92,13 +92,13 @@
   background: transparent;
   border-radius: 50%;
   border: 1.8px solid var(--tg-theme-button-text-color, #ffffff);
-  transform: translateY(-37px) scale(0); /* Adjusted from -37px */
+  transform: translateY(-36px) scale(0); /* Adjusted from -37px */
 }
 
 .active .circle {
   transition: .5s;
   transition-delay: .5s;
-  transform: translateY(-37px) scale(1); /* Adjusted from -37px */
+  transform: translateY(-36px) scale(1); /* Adjusted from -37px */
 }
 
 .indicator {
@@ -154,4 +154,8 @@
 
 .navItem:nth-child(5).active ~ .indicator {
   transform: translateX(calc(70px * 4));
+}
+
+.noNav {
+  padding-bottom: 20px;
 }
