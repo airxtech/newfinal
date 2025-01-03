@@ -54,9 +54,11 @@ export default function WalletPage() {
       // Remove workchain prefix and convert to user-friendly format
       const userFriendlyAddress = toUserFriendlyAddress(wallet.account.address);
       console.log('Using address:', userFriendlyAddress);
-
-      const response = await fetch(`https://toncenter.com/api/v2/address/getAccount?account=${userFriendlyAddress}`, {
+  
+      // Use the correct API endpoint
+      const response = await fetch(`https://toncenter.com/api/v2/getAddressInformation?address=${userFriendlyAddress}`, {
         headers: {
+          'accept': 'application/json',
           'X-API-Key': process.env.NEXT_PUBLIC_TONCENTER_API_KEY || ''
         }
       });
@@ -64,23 +66,25 @@ export default function WalletPage() {
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`);
       }
-
+  
       const data = await response.json();
       console.log('TonCenter API response:', data);
       
+      // Updated to match the correct response structure
       if (data?.ok && data?.result?.balance) {
+        // Convert nanoTONs to TONs (1 TON = 1e9 nanoTONs)
         return (Number(data.result.balance) / 1e9).toFixed(2);
       }
       
-      // If we can get balance from wallet object as fallback
+      // Fallback to wallet balance if available
       if (wallet.account.balance) {
         return (Number(BigInt(wallet.account.balance)) / 1e9).toFixed(2);
       }
-
+  
       return '0.00';
     } catch (error) {
       console.error('Error fetching balance:', error);
-      // Try to get balance from wallet object as fallback
+      // Fallback to wallet balance if available
       if (wallet.account.balance) {
         return (Number(BigInt(wallet.account.balance)) / 1e9).toFixed(2);
       }
@@ -182,44 +186,6 @@ export default function WalletPage() {
       console.log('Wallet update triggered:', wallet.account);
       updateWalletInfo();
     }
-  }, [wallet?.account?.address]);
-
-  // Update balance periodically
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-    let errorCount = 0;
-    const MAX_ERRORS = 3;
-    
-    const updateBalance = async () => {
-      if (wallet?.account?.address) {
-        try {
-          const balance = await fetchTonBalance(wallet);
-          setTonBalance(balance);
-          errorCount = 0; // Reset error count on success
-        } catch (error) {
-          console.error('Balance update failed:', error);
-          errorCount++;
-          
-          // Stop interval if too many errors
-          if (errorCount >= MAX_ERRORS) {
-            console.log('Too many errors, stopping balance updates');
-            clearInterval(intervalId);
-          }
-        }
-      }
-    };
-
-    if (wallet?.account?.address) {
-      // Initial update
-      updateBalance();
-      
-      // Set up interval
-      intervalId = setInterval(updateBalance, 15000); // Changed to 15 seconds
-    }
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
   }, [wallet?.account?.address]);
 
   // Format currency values
