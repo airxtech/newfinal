@@ -51,25 +51,39 @@ export default function WalletPage() {
   const fetchTonBalance = async (wallet: TonWallet | null) => {
     if (!wallet?.account?.address) return '0.00';
     try {
-      // Remove workchain prefix
-      const rawAddress = wallet.account.address.split(':')[1];
-      console.log('Using raw address:', rawAddress);
+      // Remove workchain prefix and convert to user-friendly format
+      const userFriendlyAddress = toUserFriendlyAddress(wallet.account.address);
+      console.log('Using address:', userFriendlyAddress);
 
-      const response = await fetch(`https://toncenter.com/api/v2/getAccount?account=${rawAddress}`, {
+      const response = await fetch(`https://toncenter.com/api/v2/address/getAccount?account=${userFriendlyAddress}`, {
         headers: {
           'X-API-Key': process.env.NEXT_PUBLIC_TONCENTER_API_KEY || ''
         }
       });
       
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
       const data = await response.json();
       console.log('TonCenter API response:', data);
       
-      if (data?.result?.balance) {
+      if (data?.ok && data?.result?.balance) {
         return (Number(data.result.balance) / 1e9).toFixed(2);
       }
+      
+      // If we can get balance from wallet object as fallback
+      if (wallet.account.balance) {
+        return (Number(BigInt(wallet.account.balance)) / 1e9).toFixed(2);
+      }
+
       return '0.00';
     } catch (error) {
       console.error('Error fetching balance:', error);
+      // Try to get balance from wallet object as fallback
+      if (wallet.account.balance) {
+        return (Number(BigInt(wallet.account.balance)) / 1e9).toFixed(2);
+      }
       return '0.00';
     }
   };
@@ -173,11 +187,34 @@ export default function WalletPage() {
   // Update balance periodically
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
+    let errorCount = 0;
+    const MAX_ERRORS = 3;
     
+    const updateBalance = async () => {
+      if (wallet?.account?.address) {
+        try {
+          const balance = await fetchTonBalance(wallet);
+          setTonBalance(balance);
+          errorCount = 0; // Reset error count on success
+        } catch (error) {
+          console.error('Balance update failed:', error);
+          errorCount++;
+          
+          // Stop interval if too many errors
+          if (errorCount >= MAX_ERRORS) {
+            console.log('Too many errors, stopping balance updates');
+            clearInterval(intervalId);
+          }
+        }
+      }
+    };
+
     if (wallet?.account?.address) {
-      intervalId = setInterval(() => {
-        fetchTonBalance(wallet).then(balance => setTonBalance(balance));
-      }, 5000); // Update every 5 seconds
+      // Initial update
+      updateBalance();
+      
+      // Set up interval
+      intervalId = setInterval(updateBalance, 15000); // Changed to 15 seconds
     }
 
     return () => {
