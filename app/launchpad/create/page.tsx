@@ -76,8 +76,8 @@ export default function CreateTokenPage() {
           validUntil: Math.floor(Date.now() / 1000) + 600,
           messages: [
             {
-              address: process.env.NEXT_PUBLIC_WALLET_ADDRESS || '',
-              amount: "300000000", // 0.3 TON in nanoTONs
+              address: process.env.WALLET_ADDRESS || '',
+              amount: "000000000", // 0.3 TON in nanoTONs
             }
           ]
         })
