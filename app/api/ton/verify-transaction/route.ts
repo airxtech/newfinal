@@ -1,37 +1,15 @@
 import { NextResponse } from 'next/server'
 
-interface TonCenterResponse {
-  ok: boolean;
-  result: {
-    utime: number;
-    transaction_id: {
-      lt: string;
-      hash: string;
-    };
-    fee: string;
-    storage_fee: string;
-    other_fee: string;
-    transaction_type: string;
-    compute_skip_reason: string;
-    compute_exit_code: number;
-    compute_gas_used: number;
-    compute_gas_limit: number;
-    compute_gas_credit: number;
-    compute_gas_fees: string;
-    compute_vm_steps: number;
-    action_result_code: number;
-    action_fees: string;
-    total_fees: string;
+interface TonTransactionResponse {
+  transactions: Array<{
+    hash: string
     in_msg: {
-      source: string;
-      destination: string;
-      value: string;
-      fwd_fee: string;
-      ihr_fee: string;
-      created_lt: string;
-      body_hash: string;
-    };
-  };
+      source: string
+      destination: string
+      value: string
+      created_at: string
+    }
+  }>
 }
 
 export async function POST(request: Request) {
@@ -54,9 +32,9 @@ export async function POST(request: Request) {
     // Wait a few seconds for transaction to be processed
     await new Promise(resolve => setTimeout(resolve, 3000))
 
-    // Verify transaction on TON blockchain using TonCenter API
+    // Use the v3 transactions endpoint
     const response = await fetch(
-      `https://toncenter.com/api/v2/getTransactionByHash?hash=${txHash}`,
+      `https://toncenter.com/api/v3/transactions?hash=${txHash}`,
       {
         headers: {
           'Accept': 'application/json',
@@ -70,14 +48,14 @@ export async function POST(request: Request) {
       throw new Error(`TonCenter API Error: ${response.status}`)
     }
 
-    const data: TonCenterResponse = await response.json()
+    const data: TonTransactionResponse = await response.json()
 
-    if (!data.ok || !data.result) {
+    // Check if transaction exists
+    if (!data.transactions || data.transactions.length === 0) {
       throw new Error('Transaction not found')
     }
 
-    // Verify transaction details
-    const tx = data.result
+    const tx = data.transactions[0]
 
     // Verify destination address matches platform wallet
     if (tx.in_msg.destination !== process.env.NEXT_PUBLIC_WALLET_ADDRESS) {
@@ -93,7 +71,7 @@ export async function POST(request: Request) {
     }
 
     // Verify transaction is recent (within last 10 minutes)
-    const txTime = tx.utime
+    const txTime = parseInt(tx.in_msg.created_at)
     const currentTime = Math.floor(Date.now() / 1000)
     if (currentTime - txTime > 600) {
       throw new Error('Transaction too old')
