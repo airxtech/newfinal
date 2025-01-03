@@ -96,7 +96,7 @@ export default function WalletPage() {
       const userFriendlyAddress = toUserFriendlyAddress(wallet.account.address);
       console.log('Fetching balance for address:', userFriendlyAddress);
       
-      const balanceUrl = `/api/ton/balance?address/route=${userFriendlyAddress}`;
+      const balanceUrl = `/api/ton/balance?address=${userFriendlyAddress}`;
       console.log('Making request to:', balanceUrl);
       
       const response = await fetch(balanceUrl);
