@@ -212,6 +212,7 @@ export default function WalletPage() {
       </div>
 
       <div className={styles.tonSection}>
+        <WalletButton />
         {wallet && (
           <div className={styles.tonBalance}>
             <div className={styles.label}>TON Balance</div>
@@ -223,7 +224,6 @@ export default function WalletPage() {
             )}
           </div>
         )}
-        <WalletButton />
       </div>
 
       <section className={styles.portfolio}>
