@@ -1,7 +1,7 @@
 // app/wallet/page.tsx
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useTonConnectUI } from '@tonconnect/ui-react'
 import { toUserFriendlyAddress } from '@tonconnect/sdk'
 import { WalletButton } from '../components/shared/WalletButton'
@@ -39,155 +39,158 @@ interface TonWallet {
 }
 
 export default function WalletPage() {
-  const [tonConnectUI] = useTonConnectUI()
-  const wallet = tonConnectUI.wallet as TonWallet | null
-  const [user, setUser] = useState<any>(null)
-  const [portfolio, setPortfolio] = useState<Token[]>([])
-  const [totalValue, setTotalValue] = useState<number>(0)
-  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [tonConnectUI] = useTonConnectUI();
+  const wallet = tonConnectUI.wallet as TonWallet | null;
+  const [user, setUser] = useState<any>(null);
+  const [portfolio, setPortfolio] = useState<Token[]>([]);
+  const [totalValue, setTotalValue] = useState<number>(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Function to get the formatted TON balance
+  const getTonBalance = (wallet: TonWallet | null) => {
+    if (!wallet?.account?.balance) return '0.00';
+    try {
+      return (Number(BigInt(wallet.account.balance)) / 1e9).toFixed(2);
+    } catch (error) {
+      console.error('Error converting balance:', error);
+      return '0.00';
+    }
+  };
 
   // Function to fetch user data and update balances
-  const fetchUserData = useCallback(async () => {
+  const fetchUserData = async () => {
     try {
-      const webApp = window.Telegram.WebApp
+      const webApp = window.Telegram.WebApp;
       if (!webApp?.initDataUnsafe?.user?.id) {
-        console.log('No user ID found in WebApp')
-        return
+        console.log('No user ID found in WebApp');
+        return;
       }
 
-      console.log('Fetching user data...')
-      const response = await fetch(`/api/user?telegramId=${webApp.initDataUnsafe.user.id}`)
-      if (!response.ok) throw new Error('Failed to fetch user data')
+      console.log('Fetching user data...');
+      const response = await fetch(`/api/user?telegramId=${webApp.initDataUnsafe.user.id}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        console.log('User data received:', data);
+        setUser(data);
 
-      const data = await response.json()
-      console.log('User data received:', data)
-      setUser(data)
-      
-      // Fetch token portfolio
-      console.log('Fetching tokens...')
-      const tokensResponse = await fetch(`/api/tokens/user/${data.telegramId}`)
-      if (!tokensResponse.ok) throw new Error('Failed to fetch tokens')
+        // Fetch tokens
+        console.log('Fetching tokens...');
+        const tokensResponse = await fetch(`/api/tokens/user/${data.telegramId}`);
+        if (tokensResponse.ok) {
+          const tokensData = await tokensResponse.json();
+          console.log('Tokens data received:', tokensData);
 
-      const tokensData = await tokensResponse.json()
-      console.log('Tokens data received:', tokensData)
-      
-      const portfolio = [{
-        id: 'zoa',
-        name: 'ZOA Coin',
-        ticker: 'ZOA',
-        logo: '💎',
-        balance: data.zoaBalance,
-        value: data.zoaBalance,
-        price: 1,
-        isListed: true
-      }, ...tokensData]
-      
-      setPortfolio(portfolio)
-      setTotalValue(portfolio.reduce((acc, token) => acc + token.value, 0))
+          const portfolioData = [{
+            id: 'zoa',
+            name: 'ZOA Coin',
+            ticker: 'ZOA',
+            logo: '💎',
+            balance: data.zoaBalance,
+            value: data.zoaBalance,
+            price: 1,
+            isListed: true
+          }, ...tokensData];
+
+          setPortfolio(portfolioData);
+          setTotalValue(portfolioData.reduce((acc, token) => acc + token.value, 0));
+        }
+      }
     } catch (error) {
-      console.error('Error fetching data:', error)
+      console.error('Error fetching user data:', error);
     }
-  }, [])
+  };
 
-  // Function to update wallet balance
-  const updateWalletBalance = useCallback(async () => {
-    if (!wallet?.account?.address || !user?.telegramId) return
+  // Function to update wallet info in database
+  const updateWalletInfo = async () => {
+    if (!wallet?.account?.address || !user?.telegramId) return;
 
     try {
+      const balance = getTonBalance(wallet);
       const walletData = {
         telegramId: user.telegramId,
-        tonBalance: wallet.account.balance && Number(BigInt(wallet.account.balance) / BigInt(1e9)),
+        tonBalance: Number(balance),
         walletAddress: wallet.account.address,
         lastConnected: new Date().toISOString()
-      }
+      };
 
-      console.log('Updating wallet data:', walletData)
+      console.log('Updating wallet with data:', walletData);
       const response = await fetch('/api/user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(walletData)
-      })
+      });
 
-      if (!response.ok) throw new Error('Failed to update wallet data')
-      
-      const updatedUser = await response.json()
-      console.log('Wallet update successful:', updatedUser)
-      setUser(updatedUser)
+      if (!response.ok) throw new Error('Failed to update wallet info');
+      const updatedUser = await response.json();
+      console.log('Updated user data:', updatedUser);
+      setUser(updatedUser);
     } catch (error) {
-      console.error('Error updating wallet:', error)
+      console.error('Error updating wallet info:', error);
     }
-  }, [wallet, user?.telegramId])
+  };
 
-  // Manual refresh handler
+  // Handle manual refresh
   const handleRefresh = async () => {
-    setIsRefreshing(true)
-    await Promise.all([fetchUserData(), updateWalletBalance()])
-    setIsRefreshing(false)
-  }
+    setIsRefreshing(true);
+    await fetchUserData();
+    await updateWalletInfo();
+    setIsRefreshing(false);
+  };
 
-  // Initial load and immediate balance check
+  // Initial load
   useEffect(() => {
     fetchUserData();
-    if (wallet?.account) {
-      logWalletDetails(wallet);
-      updateWalletBalance();
-    }
   }, []);
 
-  // Handle wallet connection and balance updates
+  // Update when wallet changes
   useEffect(() => {
     if (wallet?.account?.address) {
-      updateWalletBalance()
+      console.log('Wallet update triggered:', wallet.account);
+      updateWalletInfo();
     }
-  }, [wallet?.account?.address, wallet?.account?.balance, updateWalletBalance])
+  }, [wallet?.account?.address, wallet?.account?.balance]);
 
-  // Handle page visibility changes
+  // Update when tab becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        fetchUserData()
-        updateWalletBalance()
+        fetchUserData();
+        updateWalletInfo();
       }
-    }
+    };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [fetchUserData, updateWalletBalance])
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
-  // Listen for transaction events
+  // Handle TON Connect status changes
   useEffect(() => {
-    const unsubscribe = tonConnectUI.onStatusChange((wallet: any) => {
-      if (wallet) {
-        fetchUserData()
-        updateWalletBalance()
-      }
-    })
+    const handleStatusChange = async () => {
+      console.log('Wallet status changed');
+      await fetchUserData();
+      await updateWalletInfo();
+    };
 
+    const unsubscribe = tonConnectUI.onStatusChange(handleStatusChange);
     return () => {
-      if (typeof unsubscribe === 'function') {
-        unsubscribe()
-      }
-    }
-  }, [tonConnectUI, fetchUserData, updateWalletBalance])
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [tonConnectUI]);
 
   const formatValue = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(value)
-  }
+    }).format(value);
+  };
 
   const goToStonFi = (contractAddress: string) => {
-    window.Telegram.WebApp.openLink(`https://app.ston.fi/swap?token=${contractAddress}`)
-  }
+    window.Telegram.WebApp.openLink(`https://app.ston.fi/swap?token=${contractAddress}`);
+  };
 
   if (!user) {
-    console.log('Rendering loading state...')
-    return <div className={styles.loading}>Loading...</div>
-  }
-
-  function displayBalance(wallet: TonWallet): import("react").ReactNode {
-    throw new Error('Function not implemented.')
+    return <div className={styles.loading}>Loading...</div>;
   }
 
   return (
@@ -209,13 +212,10 @@ export default function WalletPage() {
       </div>
 
       <div className={styles.tonSection}>
-        <WalletButton />
         {wallet && (
           <div className={styles.tonBalance}>
             <div className={styles.label}>TON Balance</div>
-            <div className={styles.value}>
-              {displayBalance(wallet)}
-            </div>
+            <div className={styles.value}>{getTonBalance(wallet)} TON</div>
             {wallet.account?.address && (
               <div className={styles.address} title={wallet.account.address}>
                 {`${toUserFriendlyAddress(wallet.account.address).slice(0, 6)}...${toUserFriendlyAddress(wallet.account.address).slice(-4)}`}
@@ -223,6 +223,7 @@ export default function WalletPage() {
             )}
           </div>
         )}
+        <WalletButton />
       </div>
 
       <section className={styles.portfolio}>
@@ -260,9 +261,5 @@ export default function WalletPage() {
         </div>
       </section>
     </div>
-  )
-}
-
-function logWalletDetails(wallet: TonWallet) {
-  throw new Error('Function not implemented.')
+  );
 }

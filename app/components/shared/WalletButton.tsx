@@ -84,7 +84,7 @@ export const WalletButton = () => {
           className={styles.actionButton}
         >
           <SwitchCamera size={20} />
-          Switch-Wallet
+          Switch Wallet
         </button>
         <button
           onClick={handleDisconnect}
