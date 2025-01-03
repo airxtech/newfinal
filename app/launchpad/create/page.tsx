@@ -77,7 +77,7 @@ export default function CreateTokenPage() {
           messages: [
             {
               address: process.env.NEXT_PUBLIC_WALLET_ADDRESS || '',
-              amount: "1", // 0.3 TON in nanoTONs
+              amount: "300000000", // 0.3 TON in nanoTONs
             }
           ]
         })
