@@ -97,7 +97,7 @@ export default function WalletPage() {
       const userFriendlyAddress = toUserFriendlyAddress(wallet.account.address);
       
       // Use our backend API route instead of calling TonCenter directly
-      const response = await fetch(`/api/ton/balance?address=${userFriendlyAddress}`);
+      const response = await fetch(`/api/ton/balance/route?address=${userFriendlyAddress}`);
       
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`);
@@ -197,7 +197,6 @@ export default function WalletPage() {
       </div>
 
       <div className={styles.tonSection}>
-        <WalletButton />
         {wallet && (
           <div className={styles.tonBalance}>
             <div className={styles.label}>TON Balance</div>
@@ -209,6 +208,7 @@ export default function WalletPage() {
             )}
           </div>
         )}
+        <WalletButton />
       </div>
 
       <section className={styles.portfolio}>
