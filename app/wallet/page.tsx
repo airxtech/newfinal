@@ -45,18 +45,31 @@ export default function WalletPage() {
   const [portfolio, setPortfolio] = useState<Token[]>([]);
   const [totalValue, setTotalValue] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [tonBalance, setTonBalance] = useState('0.00');
 
-  // Function to get the formatted TON balance
-  const getTonBalance = (wallet: TonWallet | null) => {
-    console.log('Getting balance for address:', wallet?.account?.address);
-    console.log('TonCenter API Key:', process.env.NEXT_PUBLIC_TONCENTER_API_KEY?.slice(0,5) + '...');
-
-
-    if (!wallet?.account?.balance) return '0.00';
+  // Function to fetch TON balance
+  const fetchTonBalance = async (wallet: TonWallet | null) => {
+    if (!wallet?.account?.address) return '0.00';
     try {
-      return (Number(BigInt(wallet.account.balance)) / 1e9).toFixed(2);
+      // Remove workchain prefix
+      const rawAddress = wallet.account.address.split(':')[1];
+      console.log('Using raw address:', rawAddress);
+
+      const response = await fetch(`https://toncenter.com/api/v2/getAccount?account=${rawAddress}`, {
+        headers: {
+          'X-API-Key': process.env.NEXT_PUBLIC_TONCENTER_API_KEY || ''
+        }
+      });
+      
+      const data = await response.json();
+      console.log('TonCenter API response:', data);
+      
+      if (data?.result?.balance) {
+        return (Number(data.result.balance) / 1e9).toFixed(2);
+      }
+      return '0.00';
     } catch (error) {
-      console.error('Error converting balance:', error);
+      console.error('Error fetching balance:', error);
       return '0.00';
     }
   };
@@ -110,7 +123,9 @@ export default function WalletPage() {
     if (!wallet?.account?.address || !user?.telegramId) return;
 
     try {
-      const balance = getTonBalance(wallet);
+      const balance = await fetchTonBalance(wallet);
+      setTonBalance(balance);
+
       const walletData = {
         telegramId: user.telegramId,
         tonBalance: Number(balance),
@@ -153,35 +168,24 @@ export default function WalletPage() {
       console.log('Wallet update triggered:', wallet.account);
       updateWalletInfo();
     }
-  }, [wallet?.account?.address, wallet?.account?.balance]);
+  }, [wallet?.account?.address]);
 
-  // Update when tab becomes visible
+  // Update balance periodically
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        fetchUserData();
-        updateWalletInfo();
-      }
-    };
+    let intervalId: NodeJS.Timeout;
+    
+    if (wallet?.account?.address) {
+      intervalId = setInterval(() => {
+        fetchTonBalance(wallet).then(balance => setTonBalance(balance));
+      }, 5000); // Update every 5 seconds
+    }
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
-
-  // Handle TON Connect status changes
-  useEffect(() => {
-    const handleStatusChange = async () => {
-      console.log('Wallet status changed');
-      await fetchUserData();
-      await updateWalletInfo();
-    };
-
-    const unsubscribe = tonConnectUI.onStatusChange(handleStatusChange);
     return () => {
-      if (typeof unsubscribe === 'function') unsubscribe();
+      if (intervalId) clearInterval(intervalId);
     };
-  }, [tonConnectUI]);
+  }, [wallet?.account?.address]);
 
+  // Format currency values
   const formatValue = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -189,6 +193,7 @@ export default function WalletPage() {
     }).format(value);
   };
 
+  // Handle STON.fi navigation
   const goToStonFi = (contractAddress: string) => {
     window.Telegram.WebApp.openLink(`https://app.ston.fi/swap?token=${contractAddress}`);
   };
@@ -220,7 +225,7 @@ export default function WalletPage() {
         {wallet && (
           <div className={styles.tonBalance}>
             <div className={styles.label}>TON Balance</div>
-            <div className={styles.value}>{getTonBalance(wallet)} TON</div>
+            <div className={styles.value}>{tonBalance} TON</div>
             {wallet.account?.address && (
               <div className={styles.address} title={wallet.account.address}>
                 {`${toUserFriendlyAddress(wallet.account.address).slice(0, 6)}...${toUserFriendlyAddress(wallet.account.address).slice(-4)}`}
