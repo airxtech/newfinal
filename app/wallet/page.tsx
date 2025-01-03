@@ -1,7 +1,7 @@
 // app/wallet/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTonConnectUI } from '@tonconnect/ui-react'
 import { toUserFriendlyAddress } from '@tonconnect/sdk'
 import { WalletButton } from '../components/shared/WalletButton'
@@ -51,11 +51,9 @@ export default function WalletPage() {
   const fetchTonBalance = async (wallet: TonWallet | null) => {
     if (!wallet?.account?.address) return '0.00';
     try {
-      // Remove workchain prefix and convert to user-friendly format
       const userFriendlyAddress = toUserFriendlyAddress(wallet.account.address);
-      console.log('Using address:', userFriendlyAddress);
-  
-      // Use the correct API endpoint
+      console.log('Fetching balance for address:', userFriendlyAddress);
+
       const response = await fetch(`https://toncenter.com/api/v2/getAddressInformation?address=${userFriendlyAddress}`, {
         headers: {
           'accept': 'application/json',
@@ -66,25 +64,21 @@ export default function WalletPage() {
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`);
       }
-  
+
       const data = await response.json();
       console.log('TonCenter API response:', data);
       
-      // Updated to match the correct response structure
       if (data?.ok && data?.result?.balance) {
-        // Convert nanoTONs to TONs (1 TON = 1e9 nanoTONs)
         return (Number(data.result.balance) / 1e9).toFixed(2);
       }
       
-      // Fallback to wallet balance if available
       if (wallet.account.balance) {
         return (Number(BigInt(wallet.account.balance)) / 1e9).toFixed(2);
       }
-  
+
       return '0.00';
     } catch (error) {
       console.error('Error fetching balance:', error);
-      // Fallback to wallet balance if available
       if (wallet.account.balance) {
         return (Number(BigInt(wallet.account.balance)) / 1e9).toFixed(2);
       }
@@ -93,7 +87,7 @@ export default function WalletPage() {
   };
 
   // Function to fetch user data and update balances
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
       const webApp = window.Telegram.WebApp;
       if (!webApp?.initDataUnsafe?.user?.id) {
@@ -134,10 +128,10 @@ export default function WalletPage() {
     } catch (error) {
       console.error('Error fetching user data:', error);
     }
-  };
+  }, []);
 
   // Function to update wallet info in database
-  const updateWalletInfo = async () => {
+  const updateWalletInfo = useCallback(async () => {
     if (!wallet?.account?.address || !user?.telegramId) return;
 
     try {
@@ -165,20 +159,19 @@ export default function WalletPage() {
     } catch (error) {
       console.error('Error updating wallet info:', error);
     }
-  };
+  }, [wallet?.account?.address, user?.telegramId]);
 
   // Handle manual refresh
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchUserData();
-    await updateWalletInfo();
+    await Promise.all([fetchUserData(), updateWalletInfo()]);
     setIsRefreshing(false);
   };
 
-  // Initial load
+  // Initial load and wallet connection
   useEffect(() => {
     fetchUserData();
-  }, []);
+  }, [fetchUserData]);
 
   // Update when wallet changes
   useEffect(() => {
@@ -186,7 +179,31 @@ export default function WalletPage() {
       console.log('Wallet update triggered:', wallet.account);
       updateWalletInfo();
     }
-  }, [wallet?.account?.address]);
+  }, [wallet?.account?.address, updateWalletInfo]);
+
+  // Handle page visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Page became visible, refreshing data...');
+        handleRefresh();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Set up polling for balance updates (every 30 seconds)
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible' && wallet?.account?.address) {
+        updateWalletInfo();
+      }
+    }, 30000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(pollInterval);
+    };
+  }, [wallet?.account?.address, updateWalletInfo]);
 
   // Format currency values
   const formatValue = (value: number) => {
@@ -210,6 +227,13 @@ export default function WalletPage() {
       <div className={styles.header}>
         <h1>Wallet</h1>
         <div className={styles.headerActions}>
+          <button 
+            onClick={handleRefresh} 
+            className={`${styles.refreshButton} ${isRefreshing ? styles.refreshing : ''}`}
+            disabled={isRefreshing}
+          >
+            <RefreshCw size={20} />
+          </button>
           <div className={styles.totalValue}>
             Portfolio Value: {formatValue(totalValue)}
           </div>
@@ -228,13 +252,7 @@ export default function WalletPage() {
             )}
           </div>
         )}
-        <WalletButton /> <button 
-            onClick={handleRefresh} 
-            className={`${styles.refreshButton} ${isRefreshing ? styles.refreshing : ''}`}
-            disabled={isRefreshing}
-          >
-            <RefreshCw size={20} />
-          </button>
+        <WalletButton />
       </div>
 
       <section className={styles.portfolio}>
