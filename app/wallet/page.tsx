@@ -5,7 +5,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useTonConnectUI } from '@tonconnect/ui-react'
 import { toUserFriendlyAddress } from '@tonconnect/sdk'
 import { WalletButton } from '../components/shared/WalletButton'
-import { RefreshCw } from 'lucide-react'
 import styles from './page.module.css'
 
 interface Token {
@@ -44,7 +43,6 @@ export default function WalletPage() {
   const [user, setUser] = useState<any>(null);
   const [portfolio, setPortfolio] = useState<Token[]>([]);
   const [totalValue, setTotalValue] = useState<number>(0);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [tonBalance, setTonBalance] = useState('0.00');
 
   // Function to fetch TON balance
@@ -161,13 +159,6 @@ export default function WalletPage() {
     }
   }, [wallet?.account?.address, user?.telegramId]);
 
-  // Handle manual refresh
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await Promise.all([fetchUserData(), updateWalletInfo()]);
-    setIsRefreshing(false);
-  };
-
   // Initial load and wallet connection
   useEffect(() => {
     fetchUserData();
@@ -186,24 +177,17 @@ export default function WalletPage() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('Page became visible, refreshing data...');
-        handleRefresh();
+        fetchUserData();
+        updateWalletInfo();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    // Set up polling for balance updates (every 30 seconds)
-    const pollInterval = setInterval(() => {
-      if (document.visibilityState === 'visible' && wallet?.account?.address) {
-        updateWalletInfo();
-      }
-    }, 30000);
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(pollInterval);
     };
-  }, [wallet?.account?.address, updateWalletInfo]);
+  }, [fetchUserData, updateWalletInfo]);
 
   // Format currency values
   const formatValue = (value: number) => {
@@ -227,13 +211,6 @@ export default function WalletPage() {
       <div className={styles.header}>
         <h1>Wallet</h1>
         <div className={styles.headerActions}>
-          <button 
-            onClick={handleRefresh} 
-            className={`${styles.refreshButton} ${isRefreshing ? styles.refreshing : ''}`}
-            disabled={isRefreshing}
-          >
-            <RefreshCw size={20} />
-          </button>
           <div className={styles.totalValue}>
             Portfolio Value: {formatValue(totalValue)}
           </div>
