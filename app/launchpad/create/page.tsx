@@ -22,7 +22,7 @@ export default function CreateTokenPage() {
   const router = useRouter()
   const wallet = useTonWallet()
   const [tonConnectUI] = useTonConnectUI()
-  const [user, setUser] = useState<any>(null) // Replace with actual user fetching logic
+  const [user, setUser] = useState<any>(null)
   const [formData, setFormData] = useState<FormData>({
     name: '',
     ticker: '',
@@ -71,52 +71,68 @@ export default function CreateTokenPage() {
         throw new Error('Please connect your TON wallet first')
       }
 
-      // Request payment of 0.3 TON
-      const result = await tonConnectUI.sendTransaction({
-        messages: [
-          {
-            address: process.env.WALLET_ADDRESS || '', // Your collection address
-            amount: "000000000", // 0.3 TON in nano TON
-          }
-        ],
-        validUntil: Math.floor(Date.now() / 1000) + 600 // 10 minutes
-      })
+      try {
+        // Request payment of 0.3 TON
+        const result = await tonConnectUI.sendTransaction({
+          validUntil: Math.floor(Date.now() / 1000) + 600,
+          messages: [
+            {
+              address: process.env.NEXT_PUBLIC_WALLET_ADDRESS || '',
+              amount: "1", // 0.3 TON in nanoTONs
+            }
+          ]
+        })
 
-      // Get payment transaction hash
-      const paymentTxHash = result.boc
+        // Get payment transaction hash
+        const paymentTxHash = result.boc
 
-      // Upload image if exists
-      let imageUrl = formData.imageUrl
-      if (imageFile) {
-        const formData = new FormData()
-        formData.append('file', imageFile)
-        const uploadResponse = await fetch('/api/upload', {
+        // Upload image if exists
+        let imageUrl = formData.imageUrl
+        if (imageFile) {
+          const formData = new FormData()
+          formData.append('file', imageFile)
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+          })
+          if (!uploadResponse.ok) throw new Error('Failed to upload image')
+          const { url } = await uploadResponse.json()
+          imageUrl = url
+        }
+
+        // Create token with payment proof
+        const tokenResponse = await fetch('/api/tokens', {
           method: 'POST',
-          body: formData
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...formData,
+            imageUrl,
+            creatorId: user?.id,
+            paymentTxHash
+          })
         })
-        if (!uploadResponse.ok) throw new Error('Failed to upload image')
-        const { url } = await uploadResponse.json()
-        imageUrl = url
+
+        if (!tokenResponse.ok) {
+          throw new Error('Failed to create token')
+        }
+
+        const token = await tokenResponse.json()
+        router.push(`/launchpad/tokens/${token.id}`)
+      } catch (error: any) {
+        // Handle TON Connect specific errors
+        if (error.message?.includes('TON_CONNECT_SDK_ERROR')) {
+          if (error.message.includes('User rejects')) {
+            throw new Error('Transaction was cancelled in your wallet')
+          } else if (error.message.includes('Unable to verify')) {
+            throw new Error('Transaction verification failed. Please try again')
+          } else if (error.message.includes('Transaction was not sent')) {
+            throw new Error('Transaction failed. Please check your wallet and try again')
+          } else {
+            throw new Error('Wallet error occurred. Please try again')
+          }
+        }
+        throw error
       }
-
-      // Create token with payment proof
-      const tokenResponse = await fetch('/api/tokens', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          imageUrl,
-          creatorId: user?.id,
-          paymentTxHash
-        })
-      })
-
-      if (!tokenResponse.ok) {
-        throw new Error('Failed to create token')
-      }
-
-      const token = await tokenResponse.json()
-      router.push(`/launchpad/tokens/${token.id}`)
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to create token')
     } finally {
@@ -143,13 +159,13 @@ export default function CreateTokenPage() {
           ) : (
             <div className={styles.uploadPlaceholder}>
               <ImageIcon size={32} />
-              <span>Upload Image/GIF/Video</span>
+              <span>Upload Image/GIF</span>
               <span className={styles.small}>Max 10MB</span>
             </div>
           )}
           <input
             type="file"
-            accept="image/*,video/*"
+            accept="image/*"
             onChange={handleImageUpload}
             className={styles.fileInput}
           />

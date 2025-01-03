@@ -52,19 +52,13 @@ export default function WalletPage() {
       const userFriendlyAddress = toUserFriendlyAddress(wallet.account.address);
       console.log('Fetching balance for address:', userFriendlyAddress);
 
-      const response = await fetch(`https://toncenter.com/api/v2/getAddressInformation?address=${userFriendlyAddress}`, {
-        headers: {
-          'accept': 'application/json',
-          'X-API-Key': process.env.NEXT_PUBLIC_TONCENTER_API_KEY || ''
-        }
-      });
+      const response = await fetch(`/api/ton/balance?address=${userFriendlyAddress}`);
       
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('TonCenter API response:', data);
       
       if (data?.ok && data?.result?.balance) {
         return (Number(data.result.balance) / 1e9).toFixed(2);

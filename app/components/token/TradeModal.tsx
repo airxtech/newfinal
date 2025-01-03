@@ -91,15 +91,32 @@ export const TradeModal: React.FC<TradeModalProps> = ({
       if (validationError === 'Connect Wallet') {
         tonConnectUI.connectWallet?.()
       } else if (validationError === 'Not enough TON') {
-        tonConnectUI.sendTransaction({
-          validUntil: Math.floor(Date.now() / 1000) + 600,
-          messages: [
-            {
-              address: process.env.NEXT_PUBLIC_WALLET_ADDRESS || '',
-              amount: '0'
+        try {
+          await tonConnectUI.sendTransaction({
+            validUntil: Math.floor(Date.now() / 1000) + 600,
+            messages: [
+              {
+                address: process.env.NEXT_PUBLIC_WALLET_ADDRESS || '',
+                amount: "0"
+              }
+            ]
+          })
+        } catch (error: any) {
+          // Handle TON Connect specific errors
+          if (error.message?.includes('TON_CONNECT_SDK_ERROR')) {
+            if (error.message.includes('User rejects')) {
+              setError('Transaction was cancelled in your wallet')
+            } else if (error.message.includes('Unable to verify')) {
+              setError('Transaction verification failed. Please try again')
+            } else if (error.message.includes('Transaction was not sent')) {
+              setError('Transaction failed. Please check your wallet and try again')
+            } else {
+              setError('Wallet error occurred. Please try again')
             }
-          ]
-        })
+          } else {
+            setError(error.message || 'Transaction failed')
+          }
+        }
       }
       return
     }
@@ -126,7 +143,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({
         const data = await response.json()
         if (data.error === 'PRICE_IMPACT_TOO_HIGH') {
           throw new Error(
-            'Trade failed due to high price variation. Please increase your slippage tolerance to handle the current trading volume.'
+            'Price impact too high. Please increase slippage tolerance or reduce order size.'
           )
         }
         throw new Error(data.error || 'Transaction failed')
@@ -134,11 +151,20 @@ export const TradeModal: React.FC<TradeModalProps> = ({
 
       onClose()
       window.location.reload()
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message)
+    } catch (error: any) {
+      // Handle TON Connect specific errors
+      if (error.message?.includes('TON_CONNECT_SDK_ERROR')) {
+        if (error.message.includes('User rejects')) {
+          setError('Transaction was cancelled in your wallet')
+        } else if (error.message.includes('Unable to verify')) {
+          setError('Transaction verification failed. Please try again')
+        } else if (error.message.includes('Transaction was not sent')) {
+          setError('Transaction failed. Please check your wallet and try again')
+        } else {
+          setError('Wallet error occurred. Please try again')
+        }
       } else {
-        setError('Transaction failed. Please try again.')
+        setError(error.message || 'Transaction failed')
       }
     } finally {
       setLoading(false)
