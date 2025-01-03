@@ -210,13 +210,6 @@ export default function WalletPage() {
       <div className={styles.header}>
         <h1>Wallet</h1>
         <div className={styles.headerActions}>
-          <button 
-            onClick={handleRefresh} 
-            className={`${styles.refreshButton} ${isRefreshing ? styles.refreshing : ''}`}
-            disabled={isRefreshing}
-          >
-            <RefreshCw size={20} />
-          </button>
           <div className={styles.totalValue}>
             Portfolio Value: {formatValue(totalValue)}
           </div>
@@ -224,7 +217,6 @@ export default function WalletPage() {
       </div>
 
       <div className={styles.tonSection}>
-        <WalletButton />
         {wallet && (
           <div className={styles.tonBalance}>
             <div className={styles.label}>TON Balance</div>
@@ -236,6 +228,13 @@ export default function WalletPage() {
             )}
           </div>
         )}
+        <WalletButton /> <button 
+            onClick={handleRefresh} 
+            className={`${styles.refreshButton} ${isRefreshing ? styles.refreshing : ''}`}
+            disabled={isRefreshing}
+          >
+            <RefreshCw size={20} />
+          </button>
       </div>
 
       <section className={styles.portfolio}>
