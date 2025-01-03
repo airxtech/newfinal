@@ -1,4 +1,3 @@
-// app/wallet/page.tsx
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
@@ -95,15 +94,21 @@ export default function WalletPage() {
 
     try {
       const userFriendlyAddress = toUserFriendlyAddress(wallet.account.address);
+      console.log('Fetching balance for address:', userFriendlyAddress);
       
-      // Use our backend API route instead of calling TonCenter directly
-      const response = await fetch(`/api/ton/balance/route?address=${userFriendlyAddress}`);
+      const balanceUrl = `/api/ton/balance?address/route=${userFriendlyAddress}`;
+      console.log('Making request to:', balanceUrl);
+      
+      const response = await fetch(balanceUrl);
+      console.log('Balance API response status:', response.status);
       
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('Balance API response data:', data);
+
       const balance = data?.ok && data?.result?.balance 
         ? (Number(data.result.balance) / 1e9).toFixed(2)
         : wallet.account.balance
