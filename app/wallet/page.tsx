@@ -45,39 +45,6 @@ export default function WalletPage() {
   const [totalValue, setTotalValue] = useState<number>(0);
   const [tonBalance, setTonBalance] = useState('0.00');
 
-  // Function to fetch TON balance
-  const fetchTonBalance = async (wallet: TonWallet | null) => {
-    if (!wallet?.account?.address) return '0.00';
-    try {
-      const userFriendlyAddress = toUserFriendlyAddress(wallet.account.address);
-      console.log('Fetching balance for address:', userFriendlyAddress);
-
-      const response = await fetch(`/api/ton/balance?address=${userFriendlyAddress}`);
-      
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (data?.ok && data?.result?.balance) {
-        return (Number(data.result.balance) / 1e9).toFixed(2);
-      }
-      
-      if (wallet.account.balance) {
-        return (Number(BigInt(wallet.account.balance)) / 1e9).toFixed(2);
-      }
-
-      return '0.00';
-    } catch (error) {
-      console.error('Error fetching balance:', error);
-      if (wallet.account.balance) {
-        return (Number(BigInt(wallet.account.balance)) / 1e9).toFixed(2);
-      }
-      return '0.00';
-    }
-  };
-
   // Function to fetch user data and update balances
   const fetchUserData = useCallback(async () => {
     try {
@@ -127,7 +94,22 @@ export default function WalletPage() {
     if (!wallet?.account?.address || !user?.telegramId) return;
 
     try {
-      const balance = await fetchTonBalance(wallet);
+      const userFriendlyAddress = toUserFriendlyAddress(wallet.account.address);
+      
+      // Use our backend API route instead of calling TonCenter directly
+      const response = await fetch(`/api/ton/balance?address=${userFriendlyAddress}`);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const balance = data?.ok && data?.result?.balance 
+        ? (Number(data.result.balance) / 1e9).toFixed(2)
+        : wallet.account.balance
+          ? (Number(BigInt(wallet.account.balance)) / 1e9).toFixed(2)
+          : '0.00';
+
       setTonBalance(balance);
 
       const walletData = {
@@ -138,22 +120,25 @@ export default function WalletPage() {
       };
 
       console.log('Updating wallet with data:', walletData);
-      const response = await fetch('/api/user', {
+      const updateResponse = await fetch('/api/user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(walletData)
       });
 
-      if (!response.ok) throw new Error('Failed to update wallet info');
-      const updatedUser = await response.json();
+      if (!updateResponse.ok) throw new Error('Failed to update wallet info');
+      const updatedUser = await updateResponse.json();
       console.log('Updated user data:', updatedUser);
       setUser(updatedUser);
     } catch (error) {
       console.error('Error updating wallet info:', error);
+      if (wallet.account.balance) {
+        setTonBalance((Number(BigInt(wallet.account.balance)) / 1e9).toFixed(2));
+      }
     }
   }, [wallet?.account?.address, user?.telegramId]);
 
-  // Initial load and wallet connection
+  // Initial load
   useEffect(() => {
     fetchUserData();
   }, [fetchUserData]);
@@ -212,6 +197,7 @@ export default function WalletPage() {
       </div>
 
       <div className={styles.tonSection}>
+        <WalletButton />
         {wallet && (
           <div className={styles.tonBalance}>
             <div className={styles.label}>TON Balance</div>
@@ -223,7 +209,6 @@ export default function WalletPage() {
             )}
           </div>
         )}
-        <WalletButton />
       </div>
 
       <section className={styles.portfolio}>

@@ -49,8 +49,7 @@ export default function CreateTokenPage() {
   const validateForm = () => {
     if (!formData.name.trim()) return 'Token name is required'
     if (!formData.ticker.trim()) return 'Token ticker is required'
-    if (!formData.description.trim()) return 'Token description is required'
-    if (!imageFile && !formData.imageUrl) return 'Token image is required'
+    if (!imageFile && !formData.imageUrl) return 'Token image/video is required'
     return null
   }
 
@@ -82,6 +81,18 @@ export default function CreateTokenPage() {
             }
           ]
         })
+
+        const verifyResponse = await fetch('/api/ton/verify-transaction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            txHash: result.boc
+          })
+        });
+    
+        if (!verifyResponse.ok) {
+          throw new Error('Transaction verification failed');
+        }
 
         // Get payment transaction hash
         const paymentTxHash = result.boc
@@ -159,8 +170,9 @@ export default function CreateTokenPage() {
           ) : (
             <div className={styles.uploadPlaceholder}>
               <ImageIcon size={32} />
-              <span>Upload Image/GIF</span>
-              <span className={styles.small}>Max 10MB</span>
+              <span>Upload Image/Video</span>
+              <span className={styles.small}>PNG, JPG, or GIF format only
+                Max 10MB</span>
             </div>
           )}
           <input
@@ -193,7 +205,7 @@ export default function CreateTokenPage() {
         </div>
 
         <div className={styles.field}>
-          <label>Description*</label>
+          <label>Description</label>
           <textarea
             value={formData.description}
             onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
@@ -201,6 +213,8 @@ export default function CreateTokenPage() {
             rows={4}
           />
         </div>
+
+        <span className={styles.small}>* Required Fields</span>
 
         <button
           type="button"

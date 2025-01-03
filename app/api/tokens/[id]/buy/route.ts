@@ -9,44 +9,53 @@ export async function POST(
 ) {
   try {
     const body = await request.json();
-    const { userId, amount } = body;
+    const { userId, amount, maxPrice, slippage, timestamp } = body;
 
-    if (!userId || !amount) {
+    // Validate quote timestamp (1 minute validity)
+    if (Date.now() - timestamp > 60000) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { 
+          error: 'QUOTE_EXPIRED',
+          message: 'Price quote has expired. Please try again with updated prices.'
+        },
         { status: 400 }
       );
     }
 
-    // Get user's ZOA balance
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    // Get current market price
+    const token = await prisma.token.findUnique({
+      where: { id: params.id }
     });
 
-    if (!user) {
+    if (!token) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'Token not found' },
         { status: 404 }
       );
     }
 
-    // Calculate transaction details
-    const calculation = await TokenService.calculateBuyTransaction(
-      params.id,
-      amount,
-      user.zoaBalance
-    );
+    // Calculate price impact based on slippage
+    const priceMovement = Math.abs(token.currentPrice - maxPrice) / maxPrice * 100;
+    
+    if (priceMovement > slippage) {
+      return NextResponse.json(
+        {
+          error: 'PRICE_IMPACT_TOO_HIGH',
+          message: `Price movement (${priceMovement.toFixed(2)}%) exceeds your slippage tolerance (${slippage}%). Please try again with a higher slippage tolerance or process your transaction faster.`,
+          priceMovement: priceMovement.toFixed(2),
+          allowedSlippage: slippage
+        },
+        { status: 400 }
+      );
+    }
 
     // Execute transaction
-    const transaction = await TokenService.executeBuyTransaction(
-      userId,
-      params.id,
-      calculation
-    );
+    const transaction = await TokenService.executeBuyTransaction(userId, params.id, amount);
 
     return NextResponse.json({
       transaction,
-      calculation,
+      slippage,
+      executedPrice: token.currentPrice
     });
   } catch (error: any) {
     console.error('Buy token error:', error);

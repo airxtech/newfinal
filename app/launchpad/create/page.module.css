@@ -59,6 +59,10 @@
   
   .small {
     font-size: 12px;
+    color: gray; /* Set text color to gray */
+    text-align: right; /* Align text to the right */
+    display: block; /* Make the span behave like a block element */
+    margin-bottom: 1em; /* Add extra space below the text */
   }
   
   .fileInput {
