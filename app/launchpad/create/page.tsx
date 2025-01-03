@@ -1,11 +1,10 @@
-// app/launchpad/create/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import styles from './page.module.css'
 import { ArrowLeft, Image as ImageIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react'
+import { useTonConnectUI } from '@tonconnect/ui-react'
 
 interface FormData {
   name: string
@@ -15,14 +14,25 @@ interface FormData {
   website?: string
   twitter?: string
   telegram?: string
-  linkedin?: string
 }
+
+interface UserData {
+  id: string
+  telegramId: number
+  firstName: string
+  lastName?: string
+  username?: string
+  zoaBalance: number
+}
+
+const CREATION_FEE = 300000000 // 0.3 TON in nanoTONs
 
 export default function CreateTokenPage() {
   const router = useRouter()
-  const wallet = useTonWallet()
   const [tonConnectUI] = useTonConnectUI()
-  const [user, setUser] = useState<any>(null)
+  const connected = tonConnectUI.connected
+
+  const [user, setUser] = useState<UserData | null>(null)
   const [formData, setFormData] = useState<FormData>({
     name: '',
     ticker: '',
@@ -33,11 +43,37 @@ export default function CreateTokenPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const MAX_RETRIES = 3
+
+  useEffect(() => {
+    fetchUserData()
+  }, [])
+
+  const fetchUserData = async () => {
+    try {
+      const webApp = window.Telegram.WebApp
+      if (!webApp?.initDataUnsafe?.user?.id) {
+        throw new Error('User not found in WebApp')
+      }
+
+      const response = await fetch(`/api/user?telegramId=${webApp.initDataUnsafe.user.id}`)
+      const data = await response.json()
+      if (response.ok) {
+        setUser(data)
+      } else {
+        throw new Error('Failed to fetch user data')
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error)
+      setError('Failed to load user data')
+    }
+  }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      if (file.size > 10 * 1024 * 1024) {
         setError('Image size must be less than 10MB')
         return
       }
@@ -49,8 +85,33 @@ export default function CreateTokenPage() {
   const validateForm = () => {
     if (!formData.name.trim()) return 'Token name is required'
     if (!formData.ticker.trim()) return 'Token ticker is required'
-    if (!imageFile && !formData.imageUrl) return 'Token image/video is required'
+    if (!imageFile && !formData.imageUrl) return 'Token image is required'
+    if (!process.env.NEXT_PUBLIC_WALLET_ADDRESS) return 'Platform configuration error'
+    if (!connected) return 'Please connect your wallet first'
     return null
+  }
+
+  const verifyTransaction = async (txHash: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/ton/verify-transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          txHash,
+          expectedAmount: CREATION_FEE
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Verification request failed')
+      }
+
+      const data = await response.json()
+      return data.verified === true
+    } catch (error) {
+      console.error('Verification error:', error)
+      return false
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,89 +126,95 @@ export default function CreateTokenPage() {
     setError(null)
 
     try {
-      // First check if wallet is connected
-      if (!wallet) {
-        throw new Error('Please connect your TON wallet first')
-      }
-
-      try {
-        // Request payment of 0.3 TON
-        const result = await tonConnectUI.sendTransaction({
-          validUntil: Math.floor(Date.now() / 1000) + 600,
-          messages: [
-            {
-              address: process.env.NEXT_PUBLIC_WALLET_ADDRESS || '',
-              amount: "300000000", // 0.3 TON in nanoTONs
-            }
-          ]
-        })
-
-        const verifyResponse = await fetch('/api/ton/verify-transaction', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            txHash: result.boc
-          })
-        });
-    
-        if (!verifyResponse.ok) {
-          throw new Error('Transaction verification failed');
-        }
-
-        // Get payment transaction hash
-        const paymentTxHash = result.boc
-
-        // Upload image if exists
-        let imageUrl = formData.imageUrl
-        if (imageFile) {
-          const formData = new FormData()
-          formData.append('file', imageFile)
-          const uploadResponse = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData
-          })
-          if (!uploadResponse.ok) throw new Error('Failed to upload image')
-          const { url } = await uploadResponse.json()
-          imageUrl = url
-        }
-
-        // Create token with payment proof
-        const tokenResponse = await fetch('/api/tokens', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...formData,
-            imageUrl,
-            creatorId: user?.id,
-            paymentTxHash
-          })
-        })
-
-        if (!tokenResponse.ok) {
-          throw new Error('Failed to create token')
-        }
-
-        const token = await tokenResponse.json()
-        router.push(`/launchpad/tokens/${token.id}`)
-      } catch (error: any) {
-        // Handle TON Connect specific errors
-        if (error.message?.includes('TON_CONNECT_SDK_ERROR')) {
-          if (error.message.includes('User rejects')) {
-            throw new Error('Transaction was cancelled in your wallet')
-          } else if (error.message.includes('Unable to verify')) {
-            throw new Error('Transaction verification failed. Please try again')
-          } else if (error.message.includes('Transaction was not sent')) {
-            throw new Error('Transaction failed. Please check your wallet and try again')
-          } else {
-            throw new Error('Wallet error occurred. Please try again')
+      // 1. Process payment
+      const txResult = await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [
+          {
+            address: process.env.NEXT_PUBLIC_WALLET_ADDRESS!,
+            amount: CREATION_FEE.toString(),
+            payload: ''
           }
+        ]
+      })
+
+      // 2. Verify transaction with retries
+      let verified = false
+      for (let i = 0; i < MAX_RETRIES && !verified; i++) {
+        setRetryCount(i + 1)
+        verified = await verifyTransaction(txResult.boc)
+        if (!verified && i < MAX_RETRIES - 1) {
+          await new Promise(resolve => setTimeout(resolve, 3000)) // Wait 3s between retries
         }
-        throw error
       }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to create token')
+
+      if (!verified) {
+        throw new Error('Transaction verification failed after multiple attempts')
+      }
+
+      // 3. Upload image if exists
+      let imageUrl = formData.imageUrl
+      if (imageFile) {
+        const formData = new FormData()
+        formData.append('file', imageFile)
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        })
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload image')
+        }
+        const { url } = await uploadResponse.json()
+        imageUrl = url
+      }
+
+      // 4. Create token
+      const tokenResponse = await fetch('/api/tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          imageUrl,
+          creatorId: user?.id,
+          paymentTxHash: txResult.boc
+        })
+      })
+
+      if (!tokenResponse.ok) {
+        throw new Error('Failed to create token')
+      }
+
+      const token = await tokenResponse.json()
+      
+      // Show success message
+      window.Telegram.WebApp.showPopup({
+        title: 'Success!',
+        message: 'Your token has been created successfully.',
+        buttons: [{
+          type: 'ok'
+        }]
+      })
+
+      // Redirect to token page
+      router.push(`/launchpad/tokens/${token.id}`)
+
+    } catch (error: any) {
+      console.error('Token creation error:', error)
+      
+      if (error.message?.includes('TON_CONNECT_SDK_ERROR')) {
+        if (error.message.includes('User rejects')) {
+          setError('Transaction was cancelled in your wallet')
+        } else if (error.message.includes('Unable to verify')) {
+          setError('Please try again and confirm quickly to avoid timeout')
+        } else {
+          setError('Wallet error occurred. Please try again')
+        }
+      } else {
+        setError(error.message || 'Failed to create token')
+      }
     } finally {
       setIsSubmitting(false)
+      setRetryCount(0)
     }
   }
 
@@ -170,7 +237,7 @@ export default function CreateTokenPage() {
           ) : (
             <div className={styles.uploadPlaceholder}>
               <ImageIcon size={32} />
-              <span>Upload Image/Video</span>
+              <span>Upload Image</span>
               <span className={styles.small}>PNG, JPG, or GIF format only
                 Max 10MB</span>
             </div>
@@ -214,8 +281,6 @@ export default function CreateTokenPage() {
           />
         </div>
 
-        <span className={styles.small}>* Required Fields</span>
-
         <button
           type="button"
           onClick={() => setShowOptional(!showOptional)}
@@ -237,7 +302,7 @@ export default function CreateTokenPage() {
             </div>
 
             <div className={styles.field}>
-              <label>Twitter/X</label>
+              <label>Twitter</label>
               <input
                 type="text"
                 value={formData.twitter}
