@@ -157,3 +157,40 @@
     min-height: calc(100vh - 60px);
     color: var(--tg-theme-hint-color, #999999);
   }
+
+  .headerActions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .refreshButton {
+    background: none;
+    border: none;
+    padding: 8px;
+    color: var(--tg-theme-text-color, #000000);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+  }
+  
+  .refreshButton:hover {
+    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  }
+  
+  .refreshButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .refreshing svg {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
