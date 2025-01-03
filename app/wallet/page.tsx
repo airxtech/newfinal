@@ -48,6 +48,10 @@ export default function WalletPage() {
 
   // Function to get the formatted TON balance
   const getTonBalance = (wallet: TonWallet | null) => {
+    console.log('Getting balance for address:', wallet?.account?.address);
+    console.log('TonCenter API Key:', process.env.NEXT_PUBLIC_TONCENTER_API_KEY?.slice(0,5) + '...');
+
+
     if (!wallet?.account?.balance) return '0.00';
     try {
       return (Number(BigInt(wallet.account.balance)) / 1e9).toFixed(2);
