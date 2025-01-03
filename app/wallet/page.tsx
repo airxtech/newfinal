@@ -125,10 +125,14 @@ export default function WalletPage() {
     setIsRefreshing(false)
   }
 
-  // Initial load
+  // Initial load and immediate balance check
   useEffect(() => {
-    fetchUserData()
-  }, [fetchUserData])
+    fetchUserData();
+    if (wallet?.account) {
+      logWalletDetails(wallet);
+      updateWalletBalance();
+    }
+  }, []);
 
   // Handle wallet connection and balance updates
   useEffect(() => {
@@ -182,6 +186,10 @@ export default function WalletPage() {
     return <div className={styles.loading}>Loading...</div>
   }
 
+  function displayBalance(wallet: TonWallet): import("react").ReactNode {
+    throw new Error('Function not implemented.')
+  }
+
   return (
     <div className={styles.walletPage}>
       <div className={styles.header}>
@@ -206,9 +214,7 @@ export default function WalletPage() {
           <div className={styles.tonBalance}>
             <div className={styles.label}>TON Balance</div>
             <div className={styles.value}>
-              {wallet?.account?.balance !== undefined ? 
-                `${Number(BigInt(wallet.account.balance) / BigInt(1e9)).toFixed(2)} TON` : 
-                '0.00 TON'}
+              {displayBalance(wallet)}
             </div>
             {wallet.account?.address && (
               <div className={styles.address} title={wallet.account.address}>
@@ -255,4 +261,8 @@ export default function WalletPage() {
       </section>
     </div>
   )
+}
+
+function logWalletDetails(wallet: TonWallet) {
+  throw new Error('Function not implemented.')
 }
