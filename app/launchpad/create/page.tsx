@@ -151,32 +151,34 @@ export default function CreateTokenPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const validationError = validateForm()
-    if (validationError) {
-      setError(validationError)
-      return
-    }
-  
     setIsSubmitting(true)
     setError(null)
-
-    let imageUrl = formData.imageUrl
+  
+    try {
+      // 1. Upload image first if exists
+      let imageUrl = formData.imageUrl
       if (imageFile) {
+        console.log('Uploading image...')
         const formData = new FormData()
         formData.append('file', imageFile)
+        
         const uploadResponse = await fetch('/api/upload', {
           method: 'POST',
           body: formData
         })
+  
         if (!uploadResponse.ok) {
-          throw new Error('Failed to upload image')
+          const error = await uploadResponse.json()
+          throw new Error(error.details || 'Failed to upload image')
         }
-        const { url } = await uploadResponse.json()
-        imageUrl = url
+  
+        const uploadData = await uploadResponse.json()
+        imageUrl = uploadData.url
+        console.log('Image uploaded:', imageUrl)
       }
   
-    try {
-      // First create the token
+      // 2. Create token
+      console.log('Creating token...')
       const tokenResponse = await fetch('/api/tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -192,8 +194,10 @@ export default function CreateTokenPage() {
       }
   
       const token = await tokenResponse.json()
+      console.log('Token created:', token)
   
-      // Get payment invoice
+      // 3. Get payment invoice
+      console.log('Getting payment invoice...')
       const verifyResponse = await fetch('/api/ton/verify-transaction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -207,31 +211,20 @@ export default function CreateTokenPage() {
       }
   
       const { invoice } = await verifyResponse.json()
+      console.log('Got payment invoice:', invoice)
   
-      // Open Telegram's in-app browser to the payment link
-      window.Telegram.WebApp.openTelegramLink(invoice.paymentLink)
-  
-      // Start polling for payment confirmation
-      const checkPayment = setInterval(async () => {
-        const statusResponse = await fetch(`/api/ton/payment-status?invoiceId=${invoice.id}`)
-        const status = await statusResponse.json()
-  
-        if (status.paid) {
-          clearInterval(checkPayment)
-          router.push(`/launchpad/tokens/${token.id}`)
-        }
-      }, 2000)
-  
-      // Clear polling after 10 minutes
-      setTimeout(() => {
-        clearInterval(checkPayment)
-        setError('Payment timeout. Please try again.')
-        setIsSubmitting(false)
-      }, 600000)
+      // 4. Open payment in Telegram
+      if (invoice.paymentLink) {
+        console.log('Opening payment link:', invoice.paymentLink)
+        window.Telegram.WebApp.openTelegramLink(invoice.paymentLink)
+      } else {
+        throw new Error('No payment link received')
+      }
   
     } catch (error: any) {
       console.error('Token creation error:', error)
       setError(error.message || 'Failed to create token')
+    } finally {
       setIsSubmitting(false)
     }
   }
