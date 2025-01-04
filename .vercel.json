@@ -1,0 +1,14 @@
+{
+    "functions": {
+      "api/upload/route.ts": {
+        "memory": 1024,
+        "maxDuration": 10
+      }
+    },
+    "routes": [
+      {
+        "src": "/uploads/(.*)",
+        "dest": "/public/uploads/$1"
+      }
+    ]
+  }

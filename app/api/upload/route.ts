@@ -3,11 +3,9 @@ import { NextResponse } from 'next/server'
 import { writeFile } from 'fs/promises'
 import path from 'path'
 
-export const config = {
-  api: {
-    bodyParser: false,  // Disable the default body parser
-  },
-}
+// New way to configure the route
+export const runtime = 'nodejs' // specify runtime
+export const dynamic = 'force-dynamic' // disable static optimization
 
 export async function POST(request: Request) {
   try {
@@ -41,7 +39,7 @@ export async function POST(request: Request) {
 
     // Generate unique filename
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`
-    const filename = `${uniqueSuffix}-${file.name}`
+    const filename = `${uniqueSuffix}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '')}`
     const filepath = path.join(uploadDir, filename)
 
     console.log('Writing file to:', filepath)
