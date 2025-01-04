@@ -1,28 +1,24 @@
 // lib/services/tonWatcher.ts
 import { prisma } from '../prisma'
-import { Address, TonClient, fromNano } from '@ton/ton'
 import { TransactionType, TransactionStatus } from '@prisma/client'
 
-interface TonTransaction {
-  hash: string;
-  utime: number;
-  in_msg?: {
-    source: string;
-    value: string;
-  };
+interface TonConsoleTransaction {
+  id: string;
+  status: 'pending' | 'paid' | 'cancelled' | 'expired';
+  amount: string;
+  date_create: number;
+  date_expire: number;
+  payment_link: string;
+  pay_to_address: string;
+  paid_by_address?: string;
 }
 
 export class TonWatcher {
   private static instance: TonWatcher
-  private client: TonClient
-  private platformAddress: string
   private isWatching: boolean = false
+  private platformAddress: string
 
   private constructor() {
-    this.client = new TonClient({
-      endpoint: process.env.TON_ENDPOINT || 'https://toncenter.com/api/v2/jsonRPC',
-      apiKey: process.env.TONCENTER_API_KEY
-    })
     this.platformAddress = process.env.NEXT_PUBLIC_WALLET_ADDRESS!
   }
 
@@ -50,16 +46,26 @@ export class TonWatcher {
   private async watchTransactions() {
     while (this.isWatching) {
       try {
-        const response = await this.client.getTransactions(
-          Address.parse(this.platformAddress),
-          { limit: 10 }
-        );
+        const response = await fetch(
+          'https://tonconsole.com/api/v1/services/invoices/list?limit=10',
+          {
+            headers: {
+              'Authorization': `Bearer ${process.env.TONCONSOLE_API_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        )
 
-        // Type assertion to handle the response correctly
-        const transactions = response as unknown as TonTransaction[];
+        if (!response.ok) {
+          throw new Error(`TON Console API Error: ${response.status}`)
+        }
 
-        for (const tx of transactions) {
-          await this.processTransaction(tx)
+        const transactions = await response.json()
+
+        for (const tx of transactions.items) {
+          if (tx.status === 'paid') {
+            await this.processTransaction(tx)
+          }
         }
 
         await new Promise(resolve => setTimeout(resolve, 1000))
@@ -70,33 +76,33 @@ export class TonWatcher {
     }
   }
 
-  private async processTransaction(tx: TonTransaction) {
-    const amount = fromNano(tx.in_msg?.value || '0')
-
+  private async processTransaction(tx: TonConsoleTransaction) {
     try {
+      const amount = parseFloat(tx.amount) / 1e9 // Convert from nanoTON to TON
+
       const transaction = await prisma.walletTransaction.upsert({
-        where: { hash: tx.hash },
+        where: { hash: tx.id },
         update: {
           status: TransactionStatus.CONFIRMED,
           updatedAt: new Date()
         },
         create: {
-          id: tx.hash,
-          hash: tx.hash,
-          sender: tx.in_msg?.source || '',
+          id: tx.id,
+          hash: tx.id,
+          sender: tx.paid_by_address || '',
           recipient: this.platformAddress,
-          amount: parseFloat(amount),
-          timestamp: new Date(tx.utime * 1000),
+          amount: amount,
+          timestamp: new Date(tx.date_create * 1000),
           status: TransactionStatus.CONFIRMED,
           type: TransactionType.OTHER
         }
       })
 
       // Check if this is a token creation payment (0.3 TON)
-      if (Math.abs(parseFloat(amount) - 0.3) < 0.001) {
+      if (Math.abs(amount - 0.3) < 0.001) {
         const pendingToken = await prisma.token.findFirst({
           where: {
-            creator: { walletAddress: tx.in_msg?.source },
+            creator: { walletAddress: tx.paid_by_address },
             walletTransactions: { 
               none: { 
                 type: TransactionType.CREATE 
@@ -118,7 +124,6 @@ export class TonWatcher {
           })
         }
       }
-
     } catch (error) {
       console.error('Error processing transaction:', error)
     }
