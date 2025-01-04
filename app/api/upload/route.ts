@@ -1,11 +1,6 @@
 // app/api/upload/route.ts
 import { NextResponse } from 'next/server'
-import { writeFile } from 'fs/promises'
-import path from 'path'
-
-// New way to configure the route
-export const runtime = 'nodejs' // specify runtime
-export const dynamic = 'force-dynamic' // disable static optimization
+import { prisma } from '@/lib/prisma'
 
 export async function POST(request: Request) {
   try {
@@ -19,48 +14,23 @@ export async function POST(request: Request) {
       )
     }
 
-    // Log file details
-    console.log('Uploading file:', {
-      name: file.name,
-      type: file.type,
-      size: file.size
-    })
-
+    // Convert file to base64
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
+    const base64Image = buffer.toString('base64')
 
-    // Create uploads directory if it doesn't exist
-    const uploadDir = path.join(process.cwd(), 'public/uploads')
-    try {
-      await writeFile(path.join(process.cwd(), 'public/uploads/.keep'), '')
-    } catch (error) {
-      console.error('Error creating uploads directory:', error)
-    }
+    // Create URL safe data URI
+    const imageUrl = `data:${file.type};base64,${base64Image}`
 
-    // Generate unique filename
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`
-    const filename = `${uniqueSuffix}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '')}`
-    const filepath = path.join(uploadDir, filename)
-
-    console.log('Writing file to:', filepath)
-
-    await writeFile(filepath, new Uint8Array(buffer))
-    console.log('File written successfully')
-
-    // Return the public URL
-    const publicUrl = `/uploads/${filename}`
     return NextResponse.json({ 
       success: true,
-      url: publicUrl
+      url: imageUrl
     })
 
   } catch (error) {
     console.error('Upload error:', error)
     return NextResponse.json(
-      { 
-        error: 'Upload failed',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Upload failed' },
       { status: 500 }
     )
   }
