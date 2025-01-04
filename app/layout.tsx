@@ -4,13 +4,18 @@
 import './globals.css'
 import { TonConnectUIProvider } from '@tonconnect/ui-react'
 import AppLayout from './components/layout/AppLayout'
-import React from 'react'
+import React, { useEffect } from 'react'
+import { initializeServices } from '@/lib/services/initializer'
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  useEffect(() => {
+    initializeServices()
+  }, [])
+
   return (
     <html lang="en">
       <head>
@@ -36,7 +41,7 @@ export default function RootLayout({
             ]
           }}
           actionsConfiguration={{
-            twaReturnUrl: 'https://t.me/your_bot_username/start'  // Replace with your bot's username
+            twaReturnUrl: `https://t.me/${process.env.BOT_USERNAME}/start`  // Use BOT_USERNAME from .env
           }}
         >
           <AppLayout>{children}</AppLayout>

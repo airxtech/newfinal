@@ -6,62 +6,45 @@ import { TransactionType, TransactionStatus } from '@prisma/client'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { tokenId } = body
+    const { tokenId, txHash } = body
 
-    if (!process.env.TONCONSOLE_API_KEY) {
-      throw new Error('TON Console API key not configured')
-    }
-
-    // Create payment invoice
-    const response = await fetch(
-      'https://tonconsole.com/api/v1/services/invoices/invoice',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.TONCONSOLE_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          amount: '300000000', // 0.3 TON in nanotons
-          life_time: 600, // 10 minutes
-          currency: 'TON',
-          description: `Token creation fee for token ${tokenId}`
-        })
-      }
-    )
-
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Failed to create payment invoice: ${error}`)
-    }
-
-    const invoice = await response.json()
-
-    // Store invoice ID with token
-    await prisma.token.update({
-      where: { id: tokenId },
-      data: {
-        paymentInvoiceId: invoice.id
+    // Look for transaction in our database
+    const transaction = await prisma.walletTransaction.findFirst({
+      where: {
+        AND: [
+          { tokenId },
+          { type: TransactionType.CREATE },
+          { status: TransactionStatus.CONFIRMED }
+        ]
       }
     })
 
-    return NextResponse.json({
-      success: true,
-      invoice: {
-        id: invoice.id,
-        amount: invoice.amount,
-        paymentLink: invoice.payment_link,
-        expiresAt: invoice.date_expire
+    if (!transaction) {
+      return NextResponse.json(
+        { error: 'Transaction not found' },
+        { status: 404 }
+      )
+    }
+
+    // Update token status
+    await prisma.token.update({
+      where: { id: tokenId },
+      data: { 
+        currentPrice: 0.00001, // Initial price
+        marketCap: 3000, // Initial market cap (300M * 0.00001)
+        bondingCurve: 0 // Starting bonding curve
       }
+    })
+
+    return NextResponse.json({ 
+      success: true,
+      transaction
     })
 
   } catch (error) {
-    console.error('Payment setup error:', error)
+    console.error('Transaction verification error:', error)
     return NextResponse.json(
-      { 
-        error: 'Failed to setup payment',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Verification failed' },
       { status: 500 }
     )
   }

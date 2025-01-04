@@ -1,5 +1,5 @@
-// app/api/init.ts
-import { TonWatcher } from '@/lib/services/tonWatcher'
+// lib/services/initializer.ts
+import { TonWatcher } from './tonWatcher'
 
 export async function initializeServices() {
   const watcher = TonWatcher.getInstance()
