@@ -1,139 +1,121 @@
+// app/api/ton/verify-transaction/route.ts
 import { NextResponse } from 'next/server'
-
-interface TonTransactionResponse {
-  transactions: Array<{
-    hash: string
-    in_msg: {
-      source: string
-      destination: string
-      value: string
-      created_at: string
-    }
-  }>
-}
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
+    // 1. Log request start
+    console.log('Starting transaction verification')
+
+    // 2. Parse and validate request body
+    let body;
+    try {
+      body = await request.json()
+      console.log('Received request body:', body)
+    } catch (e) {
+      console.error('Failed to parse request body:', e)
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+
     const { txHash, expectedAmount } = body
 
-    console.log('Verifying transaction:', { txHash, expectedAmount })
-
+    // 3. Validate required fields
     if (!txHash) {
-      console.error('Missing txHash')
-      return NextResponse.json(
-        { error: 'Transaction hash is required' },
-        { status: 400 }
-      )
+      console.error('Missing txHash in request')
+      return NextResponse.json({ error: 'txHash is required' }, { status: 400 })
     }
 
-    if (!process.env.TONCENTER_API_KEY) {
-      console.error('TONCENTER_API_KEY not found')
-      throw new Error('API key configuration error')
+    // 4. Check API key
+    const apiKey = process.env.TONCENTER_API_KEY
+    if (!apiKey) {
+      console.error('TONCENTER_API_KEY not found in environment')
+      return NextResponse.json({ error: 'API configuration error' }, { status: 500 })
     }
 
-    // Log the URL we're about to call
-    const apiUrl = `https://toncenter.com/api/v3/transactions?hash=${txHash}`
+    // 5. Log API call details
+    const apiUrl = `https://toncenter.com/api/v2/getTransactions?address=${process.env.NEXT_PUBLIC_WALLET_ADDRESS}&limit=10`
     console.log('Calling TonCenter API:', apiUrl)
 
-    // Wait a few seconds for transaction to be processed
-    await new Promise(resolve => setTimeout(resolve, 3000))
+    // 6. Make API request
+    try {
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'X-API-Key': apiKey
+        }
+      })
 
-    const response = await fetch(apiUrl, {
-      headers: {
-        'Accept': 'application/json',
-        'X-API-Key': process.env.TONCENTER_API_KEY
+      console.log('TonCenter API response status:', response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('TonCenter API error response:', errorText)
+        return NextResponse.json({
+          error: 'TonCenter API error',
+          details: errorText
+        }, { status: 500 })
       }
-    })
 
-    console.log('TonCenter API response status:', response.status)
+      const data = await response.json()
+      console.log('TonCenter API response data:', JSON.stringify(data, null, 2))
 
-    if (!response.ok) {
-      console.error('TonCenter API error:', {
-        status: response.status,
-        statusText: response.statusText
-      })
-      const errorText = await response.text()
-      console.error('Error response body:', errorText)
-      throw new Error(`TonCenter API Error: ${response.status} - ${errorText}`)
-    }
+      // 7. Find matching transaction
+      const matchingTx = data.result?.find((tx: any) => tx.transaction_id.hash === txHash)
+      
+      if (!matchingTx) {
+        console.log('No matching transaction found for hash:', txHash)
+        return NextResponse.json({
+          error: 'Transaction not found',
+          verified: false
+        }, { status: 404 })
+      }
 
-    const data: TonTransactionResponse = await response.json()
-    console.log('TonCenter API response data:', data)
+      console.log('Found matching transaction:', matchingTx)
 
-    // Check if transaction exists
-    if (!data.transactions || data.transactions.length === 0) {
-      console.error('No transactions found for hash:', txHash)
-      throw new Error('Transaction not found')
-    }
+      // 8. Verify transaction details
+      const txAmount = parseInt(matchingTx.in_msg.value) / 1e9
+      const expectedTON = expectedAmount / 1e9
 
-    const tx = data.transactions[0]
-    console.log('Found transaction:', tx)
-
-    // Verify destination address matches platform wallet
-    if (tx.in_msg.destination !== process.env.NEXT_PUBLIC_WALLET_ADDRESS) {
-      console.error('Address mismatch:', {
-        expected: process.env.NEXT_PUBLIC_WALLET_ADDRESS,
-        received: tx.in_msg.destination
-      })
-      throw new Error('Invalid destination address')
-    }
-
-    // Verify amount
-    const txAmount = parseInt(tx.in_msg.value) / 1e9
-    const expectedTON = expectedAmount / 1e9
-    console.log('Amount verification:', { txAmount, expectedTON })
-
-    if (Math.abs(txAmount - expectedTON) > 0.001) {
-      console.error('Amount mismatch:', {
-        expected: expectedTON,
-        received: txAmount,
+      console.log('Amount verification:', {
+        txAmount,
+        expectedTON,
         difference: Math.abs(txAmount - expectedTON)
       })
-      throw new Error('Invalid transaction amount')
-    }
 
-    // Verify transaction time
-    const txTime = parseInt(tx.in_msg.created_at)
-    const currentTime = Math.floor(Date.now() / 1000)
-    console.log('Time verification:', { txTime, currentTime })
-
-    if (currentTime - txTime > 600) {
-      console.error('Transaction too old:', {
-        txTime,
-        currentTime,
-        difference: currentTime - txTime
-      })
-      throw new Error('Transaction too old')
-    }
-
-    // All verifications passed
-    console.log('Transaction verified successfully')
-    return NextResponse.json({
-      success: true,
-      verified: true,
-      transaction: {
-        hash: txHash,
-        amount: txAmount,
-        timestamp: txTime,
-        sender: tx.in_msg.source,
-        recipient: tx.in_msg.destination
+      if (Math.abs(txAmount - expectedTON) > 0.001) {
+        return NextResponse.json({
+          error: 'Invalid amount',
+          verified: false,
+          details: { expected: expectedTON, received: txAmount }
+        }, { status: 400 })
       }
-    })
+
+      // 9. Return success
+      return NextResponse.json({
+        success: true,
+        verified: true,
+        transaction: {
+          hash: txHash,
+          amount: txAmount,
+          timestamp: matchingTx.utime,
+          sender: matchingTx.in_msg.source,
+          recipient: matchingTx.in_msg.destination
+        }
+      })
+
+    } catch (apiError) {
+      console.error('Error making TonCenter API request:', apiError)
+      return NextResponse.json({
+        error: 'Failed to verify with TonCenter',
+        details: apiError instanceof Error ? apiError.message : 'Unknown API error'
+      }, { status: 500 })
+    }
 
   } catch (error) {
-    console.error('Verification error details:', {
-      error,
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    })
-
-    return NextResponse.json(
-      { 
-        error: 'Transaction verification failed',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    )
+    // 10. Top-level error handler
+    console.error('Verification endpoint error:', error)
+    return NextResponse.json({
+      error: 'Transaction verification failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }

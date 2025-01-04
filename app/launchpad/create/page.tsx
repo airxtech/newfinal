@@ -93,6 +93,8 @@ export default function CreateTokenPage() {
 
   const verifyTransaction = async (txHash: string): Promise<boolean> => {
     try {
+      console.log('Starting verification for hash:', txHash)
+      
       const response = await fetch('/api/ton/verify-transaction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,12 +103,17 @@ export default function CreateTokenPage() {
           expectedAmount: CREATION_FEE
         })
       })
-
-      if (!response.ok) {
-        throw new Error('Verification request failed')
-      }
-
+  
+      console.log('Verification response status:', response.status)
+      
       const data = await response.json()
+      console.log('Verification response data:', data)
+  
+      if (!response.ok) {
+        console.error('Verification failed:', data)
+        return false
+      }
+  
       return data.verified === true
     } catch (error) {
       console.error('Verification error:', error)
