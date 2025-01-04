@@ -6,7 +6,11 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { txHash, expectedAmount } = body
 
-    console.log('Verifying transaction:', { txHash, expectedAmount })
+    console.log('Starting verification:', { 
+      txHash, 
+      expectedAmount,
+      walletAddress: process.env.NEXT_PUBLIC_WALLET_ADDRESS 
+    })
 
     if (!txHash) {
       return NextResponse.json(
@@ -20,12 +24,9 @@ export async function POST(request: Request) {
       throw new Error('API key configuration error')
     }
 
-    // Wait for transaction to be processed
-    await new Promise(resolve => setTimeout(resolve, 5000))
-
-    // Use V3 API to search for recent transactions
-    const response = await fetch(
-      `https://toncenter.com/api/v3/transactions?account=${process.env.NEXT_PUBLIC_WALLET_ADDRESS}&limit=20`,
+    // First, get the specific transaction we're looking for
+    const txResponse = await fetch(
+      `https://toncenter.com/api/v3/transaction?hash=${txHash}`,
       {
         headers: {
           'Accept': 'application/json',
@@ -34,43 +35,78 @@ export async function POST(request: Request) {
       }
     )
 
-    console.log('TonCenter API response status:', response.status)
+    console.log('Transaction lookup response status:', txResponse.status)
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('TonCenter API error:', errorText)
-      throw new Error(`TonCenter API Error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    console.log('TonCenter API response data:', JSON.stringify(data, null, 2))
-
-    // Look for matching transaction in recent history
-    const tx = data.transactions?.find((t: any) => {
-      const txValue = parseInt(t.in_msg?.value || '0')
-      const expectedValue = expectedAmount
-      
-      // Check if amounts match (within 0.001 TON margin)
-      const valueDiff = Math.abs(txValue - expectedValue) / 1e9
-      return valueDiff < 0.001
-    })
-
-    if (!tx) {
-      console.error('No matching transaction found')
+    if (!txResponse.ok) {
+      const errorText = await txResponse.text()
+      console.error('Transaction lookup error:', errorText)
       throw new Error('Transaction not found')
     }
 
+    const txData = await txResponse.json()
+    console.log('Transaction data:', JSON.stringify(txData, null, 2))
+
+    if (!txData.transaction) {
+      throw new Error('Transaction not found')
+    }
+
+    const tx = txData.transaction
+
+    // Verify destination address
+    if (tx.in_msg.destination.toUpperCase() !== process.env.NEXT_PUBLIC_WALLET_ADDRESS?.toUpperCase()) {
+      console.error('Address mismatch:', {
+        expected: process.env.NEXT_PUBLIC_WALLET_ADDRESS,
+        received: tx.in_msg.destination
+      })
+      throw new Error('Invalid destination address')
+    }
+
+    // Verify amount
+    const txAmount = parseInt(tx.in_msg.value) / 1e9
+    const expectedTON = expectedAmount / 1e9
+    const amountDiff = Math.abs(txAmount - expectedTON)
+
+    console.log('Amount verification:', {
+      received: txAmount,
+      expected: expectedTON,
+      difference: amountDiff
+    })
+
+    if (amountDiff > 0.001) {
+      throw new Error('Invalid transaction amount')
+    }
+
+    // Verify transaction time (must be within last 10 minutes)
+    const txTime = parseInt(tx.utime)
+    const currentTime = Math.floor(Date.now() / 1000)
+    const timeDiff = currentTime - txTime
+
+    console.log('Time verification:', {
+      txTime,
+      currentTime,
+      differenceInSeconds: timeDiff
+    })
+
+    if (timeDiff > 600) {
+      throw new Error('Transaction too old')
+    }
+
     // All verifications passed
-    console.log('Transaction verified successfully:', tx)
+    console.log('Transaction verified successfully')
     return NextResponse.json({
       success: true,
       verified: true,
       transaction: {
-        hash: tx.hash,
-        amount: parseInt(tx.in_msg.value) / 1e9,
-        timestamp: parseInt(tx.in_msg.created_at),
+        hash: txHash,
+        amount: txAmount,
+        timestamp: txTime,
         sender: tx.in_msg.source,
-        recipient: tx.in_msg.destination
+        recipient: tx.in_msg.destination,
+        details: {
+          lt: tx.lt,
+          fee: tx.total_fees,
+          utime: tx.utime
+        }
       }
     })
 
