@@ -53,6 +53,7 @@ model Token {
   createdAt         DateTime  @default(now())
   holders           UserToken[]
   transactions      Transaction[]
+  paymentInvoiceId  String?
   walletTransactions WalletTransaction[]
   contractAddress   String?   // After STON.fi listing   
 }
