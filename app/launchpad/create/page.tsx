@@ -1,6 +1,8 @@
+// app/launchpad/create/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState,
+   useEffect } from 'react'
 import styles from './page.module.css'
 import { ArrowLeft, Image as ImageIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -49,6 +51,32 @@ export default function CreateTokenPage() {
   useEffect(() => {
     fetchUserData()
   }, [])
+
+  useEffect(() => {
+    // Add event listeners for transaction events
+    const handleTransactionSent = (event: any) => {
+      console.log('Transaction sent for signature:', event.detail);
+    };
+
+    const handleTransactionSigned = (event: any) => {
+      console.log('Transaction signed:', event.detail);
+    };
+
+    const handleTransactionFailed = (event: any) => {
+      console.log('Transaction signing failed:', event.detail);
+    };
+
+    window.addEventListener('ton-connect-transaction-sent-for-signature', handleTransactionSent);
+    window.addEventListener('ton-connect-transaction-signed', handleTransactionSigned);
+    window.addEventListener('ton-connect-transaction-signing-failed', handleTransactionFailed);
+
+    // Cleanup event listeners on component unmount
+    return () => {
+      window.removeEventListener('ton-connect-transaction-sent-for-signature', handleTransactionSent);
+      window.removeEventListener('ton-connect-transaction-signed', handleTransactionSigned);
+      window.removeEventListener('ton-connect-transaction-signing-failed', handleTransactionFailed);
+    };
+  }, []);
 
   const fetchUserData = async () => {
     try {
