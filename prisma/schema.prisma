@@ -34,7 +34,7 @@ model User {
 model Token {
   id                String    @id @map("_id")
   name              String
-  ticker            String    @unique
+  ticker            String    
   description       String
   imageUrl          String
   website           String?
@@ -53,7 +53,8 @@ model Token {
   createdAt         DateTime  @default(now())
   holders           UserToken[]
   transactions      Transaction[]
-  contractAddress   String?   // After STON.fi listing
+  walletTransactions WalletTransaction[]
+  contractAddress   String?   // After STON.fi listing   
 }
 
 model UserToken {
@@ -123,9 +124,33 @@ model PlatformState {
   lastUpdated          DateTime @default(now())
 }
 
+model WalletTransaction {
+  id            String    @id @map("_id")
+  hash          String    @unique
+  sender        String
+  recipient     String
+  amount        Float
+  timestamp     DateTime
+  status        TransactionStatus @default(PENDING)
+  type          TransactionType
+  // Many-to-one relationship with Token
+  token         Token?    @relation(fields: [tokenId], references: [id])
+  tokenId       String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
 enum TransactionType {
+  CREATE
   BUY
   SELL
+  OTHER
 }
 
 enum TaskType {
