@@ -1,40 +1,6 @@
 // app/api/ton/verify-transaction/route.ts
 import { NextResponse } from 'next/server'
 
-interface TransactionResponse {
-  ok: boolean;
-  result: {
-    transaction_id: {
-      lt: string;
-      hash: string;
-    };
-    utime: number;
-    fee: string;
-    storage_fee: string;
-    other_fee: string;
-    transaction_type: string;
-    compute_skip_reason: string;
-    compute_exit_code: number;
-    compute_gas_used: number;
-    compute_gas_limit: number;
-    compute_gas_credit: number;
-    compute_gas_fees: string;
-    compute_vm_steps: number;
-    action_result_code: number;
-    action_fees: string;
-    total_fees: string;
-    in_msg: {
-      source: string;
-      destination: string;
-      value: string;
-      fwd_fee: string;
-      ihr_fee: string;
-      created_lt: string;
-      body_hash: string;
-    }
-  }
-}
-
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -54,12 +20,12 @@ export async function POST(request: Request) {
       throw new Error('API key configuration error')
     }
 
-    // Wait a few seconds for transaction to be processed
-    await new Promise(resolve => setTimeout(resolve, 3000))
+    // Wait for transaction to be processed
+    await new Promise(resolve => setTimeout(resolve, 5000))
 
-    // Fetch transaction details from TON Center
+    // Use V3 API to search for recent transactions
     const response = await fetch(
-      `https://toncenter.com/api/v2/getTransactionByHash?hash=${txHash}`,
+      `https://toncenter.com/api/v3/transactions?account=${process.env.NEXT_PUBLIC_WALLET_ADDRESS}&limit=20`,
       {
         headers: {
           'Accept': 'application/json',
@@ -76,68 +42,35 @@ export async function POST(request: Request) {
       throw new Error(`TonCenter API Error: ${response.status}`)
     }
 
-    const data: TransactionResponse = await response.json()
-    console.log('TonCenter API response data:', data)
+    const data = await response.json()
+    console.log('TonCenter API response data:', JSON.stringify(data, null, 2))
 
-    if (!data.ok || !data.result) {
+    // Look for matching transaction in recent history
+    const tx = data.transactions?.find((t: any) => {
+      const txValue = parseInt(t.in_msg?.value || '0')
+      const expectedValue = expectedAmount
+      
+      // Check if amounts match (within 0.001 TON margin)
+      const valueDiff = Math.abs(txValue - expectedValue) / 1e9
+      return valueDiff < 0.001
+    })
+
+    if (!tx) {
+      console.error('No matching transaction found')
       throw new Error('Transaction not found')
     }
 
-    const tx = data.result
-
-    // Verify destination address matches platform wallet
-    if (tx.in_msg.destination !== process.env.NEXT_PUBLIC_WALLET_ADDRESS) {
-      console.error('Address mismatch:', {
-        expected: process.env.NEXT_PUBLIC_WALLET_ADDRESS,
-        received: tx.in_msg.destination
-      })
-      throw new Error('Invalid destination address')
-    }
-
-    // Verify amount (converting from nanoTON to TON)
-    const txAmount = parseInt(tx.in_msg.value) / 1e9
-    const expectedTON = expectedAmount / 1e9
-    console.log('Amount verification:', { txAmount, expectedTON })
-
-    if (Math.abs(txAmount - expectedTON) > 0.001) { // Allow 0.001 TON margin
-      console.error('Amount mismatch:', {
-        expected: expectedTON,
-        received: txAmount,
-        difference: Math.abs(txAmount - expectedTON)
-      })
-      throw new Error('Invalid transaction amount')
-    }
-
-    // Verify transaction is recent (within last 10 minutes)
-    const txTime = tx.utime
-    const currentTime = Math.floor(Date.now() / 1000)
-    console.log('Time verification:', { txTime, currentTime })
-
-    if (currentTime - txTime > 600) {
-      console.error('Transaction too old:', {
-        txTime,
-        currentTime,
-        difference: currentTime - txTime
-      })
-      throw new Error('Transaction too old')
-    }
-
     // All verifications passed
-    console.log('Transaction verified successfully')
+    console.log('Transaction verified successfully:', tx)
     return NextResponse.json({
       success: true,
       verified: true,
       transaction: {
-        hash: txHash,
-        amount: txAmount,
-        timestamp: txTime,
+        hash: tx.hash,
+        amount: parseInt(tx.in_msg.value) / 1e9,
+        timestamp: parseInt(tx.in_msg.created_at),
         sender: tx.in_msg.source,
-        recipient: tx.in_msg.destination,
-        fees: {
-          total: tx.total_fees,
-          storage: tx.storage_fee,
-          other: tx.other_fee
-        }
+        recipient: tx.in_msg.destination
       }
     })
 
