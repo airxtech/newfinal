@@ -1,32 +1,41 @@
 // app/api/ton/verify-transaction/route.ts
 import { NextResponse } from 'next/server'
 
+interface Transaction {
+  in_msg: {
+    source: string
+    destination: string
+    value: string
+  }
+  utime: number
+  transaction_id: {
+    lt: string
+    hash: string
+  }
+  fee: string
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { txHash, expectedAmount } = body
 
     console.log('Starting verification:', { 
-      txHash, 
       expectedAmount,
-      walletAddress: process.env.NEXT_PUBLIC_WALLET_ADDRESS 
+      platformWallet: process.env.NEXT_PUBLIC_WALLET_ADDRESS
     })
-
-    if (!txHash) {
-      return NextResponse.json(
-        { error: 'Transaction hash is required' },
-        { status: 400 }
-      )
-    }
 
     if (!process.env.TONCENTER_API_KEY) {
       console.error('TONCENTER_API_KEY not found')
       throw new Error('API key configuration error')
     }
 
-    // First, get the specific transaction we're looking for
-    const txResponse = await fetch(
-      `https://toncenter.com/api/v3/transaction?hash=${txHash}`,
+    // Wait for transaction to be processed
+    await new Promise(resolve => setTimeout(resolve, 5000))
+
+    // Get recent transactions for our wallet
+    const response = await fetch(
+      `https://toncenter.com/api/v2/getTransactions?address=${process.env.NEXT_PUBLIC_WALLET_ADDRESS}&limit=50`,
       {
         headers: {
           'Accept': 'application/json',
@@ -35,88 +44,84 @@ export async function POST(request: Request) {
       }
     )
 
-    console.log('Transaction lookup response status:', txResponse.status)
+    console.log('TonCenter API response status:', response.status)
 
-    if (!txResponse.ok) {
-      const errorText = await txResponse.text()
-      console.error('Transaction lookup error:', errorText)
-      throw new Error('Transaction not found')
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('TonCenter API error:', errorText)
+      throw new Error(`TonCenter API Error: ${response.status}`)
     }
 
-    const txData = await txResponse.json()
-    console.log('Transaction data:', JSON.stringify(txData, null, 2))
+    const data = await response.json()
+    console.log('Found total transactions:', data.result?.length)
 
-    if (!txData.transaction) {
-      throw new Error('Transaction not found')
-    }
-
-    const tx = txData.transaction
-
-    // Verify destination address
-    if (tx.in_msg.destination.toUpperCase() !== process.env.NEXT_PUBLIC_WALLET_ADDRESS?.toUpperCase()) {
-      console.error('Address mismatch:', {
-        expected: process.env.NEXT_PUBLIC_WALLET_ADDRESS,
-        received: tx.in_msg.destination
-      })
-      throw new Error('Invalid destination address')
-    }
-
-    // Verify amount
-    const txAmount = parseInt(tx.in_msg.value) / 1e9
-    const expectedTON = expectedAmount / 1e9
-    const amountDiff = Math.abs(txAmount - expectedTON)
-
-    console.log('Amount verification:', {
-      received: txAmount,
-      expected: expectedTON,
-      difference: amountDiff
-    })
-
-    if (amountDiff > 0.001) {
-      throw new Error('Invalid transaction amount')
-    }
-
-    // Verify transaction time (must be within last 10 minutes)
-    const txTime = parseInt(tx.utime)
+    // Current timestamp
     const currentTime = Math.floor(Date.now() / 1000)
-    const timeDiff = currentTime - txTime
+    const fifteenMinutesAgo = currentTime - (15 * 60)
 
-    console.log('Time verification:', {
-      txTime,
-      currentTime,
-      differenceInSeconds: timeDiff
+    // Filter transactions:
+    // 1. Within last 15 minutes
+    // 2. Matches expected amount
+    // 3. Sent to our wallet
+    const matchingTx = data.result?.find((tx: Transaction) => {
+      // Check timestamp
+      if (tx.utime < fifteenMinutesAgo) {
+        return false
+      }
+
+      // Check destination
+      if (tx.in_msg.destination.toLowerCase() !== process.env.NEXT_PUBLIC_WALLET_ADDRESS?.toLowerCase()) {
+        return false
+      }
+
+      // Check amount (convert from nanoTON to TON)
+      const txAmount = parseInt(tx.in_msg.value || '0') / 1e9
+      const expectedTON = expectedAmount / 1e9
+      const amountDiff = Math.abs(txAmount - expectedTON)
+
+      console.log('Checking transaction:', {
+        timestamp: new Date(tx.utime * 1000).toISOString(),
+        txAmount,
+        expectedTON,
+        difference: amountDiff,
+        from: tx.in_msg.source
+      })
+
+      return amountDiff < 0.001 // Allow 0.001 TON margin for fees
     })
 
-    if (timeDiff > 600) {
-      throw new Error('Transaction too old')
+    if (!matchingTx) {
+      console.log('No matching recent transaction found')
+      throw new Error('No matching transaction found in the last 15 minutes')
     }
 
-    // All verifications passed
-    console.log('Transaction verified successfully')
+    // Found matching transaction
+    console.log('Found matching transaction:', {
+      hash: matchingTx.transaction_id.hash,
+      amount: parseInt(matchingTx.in_msg.value) / 1e9,
+      time: new Date(matchingTx.utime * 1000).toISOString(),
+      sender: matchingTx.in_msg.source
+    })
+
     return NextResponse.json({
       success: true,
       verified: true,
       transaction: {
-        hash: txHash,
-        amount: txAmount,
-        timestamp: txTime,
-        sender: tx.in_msg.source,
-        recipient: tx.in_msg.destination,
+        hash: matchingTx.transaction_id.hash,
+        amount: parseInt(matchingTx.in_msg.value) / 1e9,
+        timestamp: matchingTx.utime,
+        sender: matchingTx.in_msg.source,
+        recipient: matchingTx.in_msg.destination,
         details: {
-          lt: tx.lt,
-          fee: tx.total_fees,
-          utime: tx.utime
+          lt: matchingTx.transaction_id.lt,
+          fee: matchingTx.fee,
+          timeAgo: Math.floor((currentTime - matchingTx.utime) / 60) + ' minutes ago'
         }
       }
     })
 
   } catch (error) {
-    console.error('Verification error details:', {
-      error,
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    })
-
+    console.error('Verification failed:', error)
     return NextResponse.json(
       { 
         error: 'Transaction verification failed',
