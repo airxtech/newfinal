@@ -1,4 +1,3 @@
-// app/api/ton/verify-transaction/route.ts
 import { NextResponse } from 'next/server'
 
 interface Transaction {
@@ -92,7 +91,7 @@ export async function POST(request: Request) {
 
     if (!matchingTx) {
       console.log('No matching recent transaction found')
-      throw new Error('No matching transaction found in the last 15 minutes')
+      throw new Error('No matching transaction found in the last 60 minutes')
     }
 
     // Found matching transaction
