@@ -53,8 +53,6 @@ model Token {
   createdAt         DateTime  @default(now())
   holders           UserToken[]
   transactions      Transaction[]
-  paymentInvoiceId  String?
-  walletTransactions WalletTransaction[]
   contractAddress   String?   // After STON.fi listing   
 }
 
@@ -123,22 +121,6 @@ model PlatformState {
   availableProfit      Float    @default(0)
   platformWalletBalance Float    @default(0)
   lastUpdated          DateTime @default(now())
-}
-
-model WalletTransaction {
-  id            String    @id @map("_id")
-  hash          String    @unique
-  sender        String
-  recipient     String
-  amount        Float
-  timestamp     DateTime
-  status        TransactionStatus @default(PENDING)
-  type          TransactionType
-  // Many-to-one relationship with Token
-  token         Token?    @relation(fields: [tokenId], references: [id])
-  tokenId       String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
 }
 
 enum TransactionStatus {

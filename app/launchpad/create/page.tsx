@@ -155,7 +155,7 @@ export default function CreateTokenPage() {
     setError(null)
   
     try {
-      // 1. Upload image and get base64
+      // 1. Upload image
       let imageUrl = formData.imageUrl
       if (imageFile) {
         console.log('Uploading image...')
@@ -173,73 +173,39 @@ export default function CreateTokenPage() {
   
         const uploadData = await uploadResponse.json()
         imageUrl = uploadData.url
-        console.log('Image uploaded:', imageUrl)
       }
   
-      // 2. Initialize token creation in pending state
-      console.log('Creating token in pending state...')
-      const tokenResponse = await fetch('/api/tokens/init', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          imageUrl,
-          creatorId: user?.id
-        })
-      })
-  
-      if (!tokenResponse.ok) {
-        throw new Error('Failed to initialize token')
-      }
-  
-      const token = await tokenResponse.json()
-  
-      // 3. Send transaction via TonConnect
-      console.log('Requesting wallet transaction...')
+      // 2. Send transaction via TonConnect
       const txResult = await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [
           {
             address: process.env.NEXT_PUBLIC_WALLET_ADDRESS!,
             amount: '300000000', // 0.3 TON
-            payload: ''
           }
         ]
       })
   
-      console.log('Transaction sent:', txResult)
-  
-      // 4. Start polling for transaction confirmation
-      let confirmed = false
-      let retries = 0
-      const maxRetries = 30 // 30 seconds timeout
-  
-      while (!confirmed && retries < maxRetries) {
-        // Check transaction status
-        const verifyResponse = await fetch('/api/ton/verify-transaction', {
+      // 3. If transaction succeeded, create token
+      if (txResult.boc) {
+        const tokenResponse = await fetch('/api/tokens', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            tokenId: token.id,
-            txHash: txResult.boc
+            ...formData,
+            imageUrl,
+            creatorId: user?.id,
+            transactionHash: txResult.boc
           })
         })
   
-        if (verifyResponse.ok) {
-          confirmed = true
-          break
+        if (!tokenResponse.ok) {
+          throw new Error('Failed to create token')
         }
   
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        retries++
+        const token = await tokenResponse.json()
+        router.push(`/launchpad/tokens/${token.id}`)
       }
-  
-      if (!confirmed) {
-        throw new Error('Transaction verification timeout')
-      }
-  
-      // 5. Redirect to token page
-      router.push(`/launchpad/tokens/${token.id}`)
   
     } catch (error: any) {
       console.error('Token creation error:', error)
