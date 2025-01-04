@@ -156,39 +156,11 @@ export default function CreateTokenPage() {
       setError(validationError)
       return
     }
-
+  
     setIsSubmitting(true)
     setError(null)
 
-    try {
-      // 1. Process payment
-      const txResult = await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 600,
-        messages: [
-          {
-            address: process.env.NEXT_PUBLIC_WALLET_ADDRESS!,
-            amount: CREATION_FEE.toString(),
-            payload: ''
-          }
-        ]
-      })
-
-      // 2. Verify transaction with retries
-      let verified = false
-      for (let i = 0; i < MAX_RETRIES && !verified; i++) {
-        setRetryCount(i + 1)
-        verified = await verifyTransaction(txResult.boc)
-        if (!verified && i < MAX_RETRIES - 1) {
-          await new Promise(resolve => setTimeout(resolve, 3000)) // Wait 3s between retries
-        }
-      }
-
-      if (!verified) {
-        throw new Error('Transaction verification failed after multiple attempts')
-      }
-
-      // 3. Upload image if exists
-      let imageUrl = formData.imageUrl
+    let imageUrl = formData.imageUrl
       if (imageFile) {
         const formData = new FormData()
         formData.append('file', imageFile)
@@ -202,54 +174,65 @@ export default function CreateTokenPage() {
         const { url } = await uploadResponse.json()
         imageUrl = url
       }
-
-      // 4. Create token
+  
+    try {
+      // First create the token
       const tokenResponse = await fetch('/api/tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           imageUrl,
-          creatorId: user?.id,
-          paymentTxHash: txResult.boc
+          creatorId: user?.id
         })
       })
-
+  
       if (!tokenResponse.ok) {
         throw new Error('Failed to create token')
       }
-
+  
       const token = await tokenResponse.json()
-      
-      // Show success message
-      window.Telegram.WebApp.showPopup({
-        title: 'Success!',
-        message: 'Your token has been created successfully.',
-        buttons: [{
-          type: 'ok'
-        }]
+  
+      // Get payment invoice
+      const verifyResponse = await fetch('/api/ton/verify-transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tokenId: token.id
+        })
       })
-
-      // Redirect to token page
-      router.push(`/launchpad/tokens/${token.id}`)
-
+  
+      if (!verifyResponse.ok) {
+        throw new Error('Failed to setup payment')
+      }
+  
+      const { invoice } = await verifyResponse.json()
+  
+      // Open Telegram's in-app browser to the payment link
+      window.Telegram.WebApp.openTelegramLink(invoice.paymentLink)
+  
+      // Start polling for payment confirmation
+      const checkPayment = setInterval(async () => {
+        const statusResponse = await fetch(`/api/ton/payment-status?invoiceId=${invoice.id}`)
+        const status = await statusResponse.json()
+  
+        if (status.paid) {
+          clearInterval(checkPayment)
+          router.push(`/launchpad/tokens/${token.id}`)
+        }
+      }, 2000)
+  
+      // Clear polling after 10 minutes
+      setTimeout(() => {
+        clearInterval(checkPayment)
+        setError('Payment timeout. Please try again.')
+        setIsSubmitting(false)
+      }, 600000)
+  
     } catch (error: any) {
       console.error('Token creation error:', error)
-      
-      if (error.message?.includes('TON_CONNECT_SDK_ERROR')) {
-        if (error.message.includes('User rejects')) {
-          setError('Transaction was cancelled in your wallet')
-        } else if (error.message.includes('Unable to verify')) {
-          setError('Please try again and confirm quickly to avoid timeout')
-        } else {
-          setError('Wallet error occurred. Please try again')
-        }
-      } else {
-        setError(error.message || 'Failed to create token')
-      }
-    } finally {
+      setError(error.message || 'Failed to create token')
       setIsSubmitting(false)
-      setRetryCount(0)
     }
   }
 
