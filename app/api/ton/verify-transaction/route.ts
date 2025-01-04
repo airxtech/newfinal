@@ -57,10 +57,10 @@ export async function POST(request: Request) {
 
     // Current timestamp
     const currentTime = Math.floor(Date.now() / 1000)
-    const fifteenMinutesAgo = currentTime - (15 * 60)
+    const fifteenMinutesAgo = currentTime - (60 * 60)
 
     // Filter transactions:
-    // 1. Within last 15 minutes
+    // 1. Within last 60 minutes
     // 2. Matches expected amount
     // 3. Sent to our wallet
     const matchingTx = data.result?.find((tx: Transaction) => {
