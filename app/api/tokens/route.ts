@@ -1,6 +1,7 @@
 // app/api/tokens/route.ts
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import crypto from 'crypto'
 
 export async function GET(request: Request) {
   try {
@@ -10,22 +11,17 @@ export async function GET(request: Request) {
     console.log('Processing request for view:', view)
     
     let where = {}
-    let orderBy: any = { createdAt: 'desc' } // Default ordering
+    let orderBy: any = { createdAt: 'desc' }
 
-    // Apply filters based on view
     switch (view) {
       case 'hot':
         where = {
           lastBondingUpdate: {
             not: null,
-            gte: new Date(Date.now() - 10 * 60 * 1000) // Last 10 minutes
+            gte: new Date(Date.now() - 10 * 60 * 1000)
           }
         }
         orderBy = { bondingCurve: 'desc' }
-        break
-        
-      case 'new':
-        // Already using default orderBy
         break
         
       case 'listed':
@@ -57,29 +53,18 @@ export async function GET(request: Request) {
         break
     }
 
-    console.log('Query parameters:', { where, orderBy })
-
-    // Execute the query
     const tokens = await prisma.token.findMany({
       where,
       orderBy,
-      select: {
-        id: true,
-        name: true,
-        ticker: true,
-        imageUrl: true,
-        currentPrice: true,
-        marketCap: true,
-        bondingCurve: true,
-        createdAt: true,
-        isListed: true,
-        isGuaranteed: true,
-        transactions: {
+      include: {
+        transactions: true,
+        holders: true,
+        creator: {
           select: {
             id: true,
-            type: true,
-            amount: true,
-            timestamp: true
+            username: true,
+            firstName: true,
+            lastName: true
           }
         }
       }
@@ -87,48 +72,108 @@ export async function GET(request: Request) {
 
     console.log(`Found ${tokens.length} tokens`)
 
-    // Transform tokens for response
-    const transformedTokens = tokens.map(token => {
-      const msPerDay = 1000 * 60 * 60 * 24
-      const daysListed = Math.floor((Date.now() - new Date(token.createdAt).getTime()) / msPerDay)
+    const transformedTokens = tokens.map(token => ({
+      id: token.id,
+      name: token.name,
+      ticker: token.ticker,
+      imageUrl: token.imageUrl,
+      description: token.description,
+      transactions: token.transactions.length,
+      daysListed: Math.floor((Date.now() - new Date(token.createdAt).getTime()) / (1000 * 60 * 60 * 24)),
+      priceChange: Math.random() * 20 - 10, // Mock data for now
+      bondingProgress: token.bondingCurve,
+      marketCap: token.marketCap,
+      currentPrice: token.currentPrice,
+      isGuaranteed: token.isGuaranteed,
+      isListed: token.isListed,
+      website: token.website,
+      twitter: token.twitter,
+      telegram: token.telegram,
+      creator: token.creator,
+      createdAt: token.createdAt,
+      holdersCount: token.holders.length
+    }))
 
-      // Calculate price change (mock for now)
-      const priceChange = Math.random() * 20 - 10 // Random value between -10 and 10
-
-      return {
-        id: token.id,
-        name: token.name,
-        ticker: token.ticker,
-        logo: '🪙', // Default logo
-        transactions: token.transactions.length,
-        daysListed,
-        priceChange,
-        bondingProgress: token.bondingCurve,
-        marketCap: token.marketCap,
-        isGuaranteed: token.isGuaranteed
-      }
-    })
-
-    console.log('Successfully transformed tokens')
     return NextResponse.json(transformedTokens)
-    
   } catch (error) {
     console.error('Error in tokens API:', error)
-    
-    // Handle Prisma errors
-    if (error instanceof Error && 'code' in error) {
-      console.error('Prisma error code:', error.code)
+    return NextResponse.json(
+      { error: 'Failed to fetch tokens' },
+      { status: 500 }
+    )
+  }
+}
+
+// Handle POST requests (creating new tokens)
+export async function POST(request: Request) {
+  try {
+    const body = await request.json()
+    const { 
+      name, 
+      ticker, 
+      description, 
+      imageUrl, 
+      website, 
+      twitter, 
+      telegram, 
+      creatorId 
+    } = body
+
+    // Validation
+    if (!name || !ticker || !description || !imageUrl || !creatorId) {
       return NextResponse.json(
-        { error: `Database error: ${error.code}` },
-        { status: 500 }
+        { error: 'Missing required fields' },
+        { status: 400 }
       )
     }
 
-    return NextResponse.json(
-      { 
-        error: 'Failed to fetch tokens',
-        details: error instanceof Error ? error.message : 'Unknown error'
+    // Create token
+    const token = await prisma.token.create({
+      data: {
+        id: crypto.randomUUID(),
+        name,
+        ticker: ticker.toUpperCase(),
+        description,
+        imageUrl,
+        website,
+        twitter,
+        telegram,
+        creatorId,
+        currentPrice: 0.00001, // Initial price
+        marketCap: 3000, // Initial market cap (300M * 0.00001)
+        bondingCurve: 0,
+        lastBondingUpdate: new Date(),
+        totalSupply: 300000000, // 300M tokens
+        isListed: false,
+        isGuaranteed: false
       },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            username: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    })
+
+    // Initial holder record for creator
+    await prisma.userToken.create({
+      data: {
+        id: crypto.randomUUID(),
+        userId: creatorId,
+        tokenId: token.id,
+        balance: 300000000 // Creator gets all initial tokens
+      }
+    })
+
+    return NextResponse.json(token)
+  } catch (error) {
+    console.error('Token creation error:', error)
+    return NextResponse.json(
+      { error: 'Failed to create token' },
       { status: 500 }
     )
   }

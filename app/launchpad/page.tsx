@@ -11,14 +11,27 @@ interface Token {
   id: string
   name: string
   ticker: string
-  logo: string
   imageUrl: string
+  description: string
   transactions: number
   daysListed: number
   priceChange: number
   bondingProgress: number
   marketCap: number
+  currentPrice: number
   isGuaranteed: boolean
+  isListed: boolean
+  website?: string
+  twitter?: string
+  telegram?: string
+  creator?: {
+    id: string
+    username?: string
+    firstName: string
+    lastName?: string
+  }
+  createdAt: Date
+  holdersCount: number
 }
 
 export default function LaunchpadPage() {
@@ -72,30 +85,25 @@ export default function LaunchpadPage() {
   // Token rotation for 'all' view
   useEffect(() => {
     if (activeView === 'all' && tokens.length > 0) {
-      // Set initial highlight
-      if (!highlightedToken) {
-        setHighlightedToken(tokens[0].id)
-      }
+      // Always highlight the first token
+      setHighlightedToken(tokens[0].id)
 
       const rotationInterval = setInterval(() => {
         setTokens(currentTokens => {
-          const newTokens = [...currentTokens];
-          const firstToken = newTokens.shift();
+          const newTokens = [...currentTokens]
+          const firstToken = newTokens.shift()
           if (firstToken) {
-            newTokens.push(firstToken);
+            newTokens.push(firstToken)
           }
-          return newTokens;
-        });
-        
-        // Update highlighted token to be the new first token
-        setHighlightedToken(tokens[1]?.id || tokens[0]?.id);
-      }, 3000);
+          return newTokens
+        })
+      }, 3000)
 
-      return () => clearInterval(rotationInterval);
+      return () => clearInterval(rotationInterval)
     }
-  }, [activeView, tokens.length]);
+  }, [activeView, tokens.length])
 
-  // Auto-refresh data
+  // Auto-refresh for hot and all views
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null
 
@@ -129,79 +137,92 @@ export default function LaunchpadPage() {
     return `${days}d`
   }
 
-  const renderTokenCard = (token: Token) => (
-    <div 
-      key={token.id} 
-      className={`${styles.tokenCard} ${token.id === highlightedToken ? styles.highlighted : ''}`}
-      onClick={() => router.push(`/launchpad/tokens/${token.id}`)}
-    >
-      <div className={styles.header}>
-        <div className={styles.logo}>
-          {token.imageUrl ? (
-            <img 
-              src={token.imageUrl} 
-              alt={token.name} 
-              className={styles.tokenImage}
-            />
-          ) : (
-            <span className={styles.fallbackLogo}>
-              {token.logo || '⭐️'}
+  const renderTokenCard = (token: Token) => {
+    console.log('Rendering token:', { id: token.id, name: token.name, imageUrl: token.imageUrl })
+    
+    return (
+      <div 
+        key={token.id} 
+        className={`${styles.tokenCard} ${token.id === highlightedToken ? styles.highlighted : ''}`}
+        onClick={() => router.push(`/launchpad/tokens/${token.id}`)}
+      >
+        <div className={styles.header}>
+          <div className={styles.logo}>
+            {token.imageUrl ? (
+              <img 
+                src={token.imageUrl} 
+                alt={token.name} 
+                className={styles.tokenImage}
+                onError={(e) => {
+                  console.error('Image failed to load:', token.imageUrl)
+                  e.currentTarget.src = ''
+                  e.currentTarget.style.display = 'none'
+                  const fallback = document.createElement('span')
+                  fallback.className = styles.fallbackLogo
+                  fallback.textContent = '🪙'
+                  e.currentTarget.parentElement?.appendChild(fallback)
+                }}
+              />
+            ) : (
+              <span className={styles.fallbackLogo}>
+                🪙
+              </span>
+            )}
+          </div>
+          <div className={styles.nameContainer}>
+            <h3>{token.name}</h3>
+            <span className={styles.ticker}>{token.ticker}</span>
+          </div>
+        </div>
+
+        <div className={styles.stats}>
+          <div className={styles.stat}>
+            <span className={styles.label}>
+              💫 Transactions
             </span>
-          )}
+            <span className={styles.value}>{token.transactions || 0}</span>
+          </div>
+          <div className={styles.stat}>
+            <span className={styles.label}>
+              🕒 Listed
+            </span>
+            <span className={styles.value}>
+              {formatTime(token.daysListed || 0)}
+            </span>
+          </div>
         </div>
-        <div className={styles.nameContainer}>
-          <h3>{token.name}</h3>
-          <span className={styles.ticker}>{token.ticker}</span>
-        </div>
-      </div>
 
-      <div className={styles.stats}>
-        <div className={styles.stat}>
+        <div className={styles.priceChange}>
+          <span 
+            className={`${styles.change} ${(token.priceChange || 0) >= 0 ? styles.positive : styles.negative}`}
+          >
+            {(token.priceChange || 0) >= 0 ? '📈' : '📉'} {(token.priceChange || 0) >= 0 ? '+' : ''}{token.priceChange.toFixed(2)}%
+          </span>
+          <span className={styles.period}>6h</span>
+        </div>
+
+        <div className={styles.bondingCurve}>
+          <div className={styles.progressLabel}>
+            <span>🚀 Bonding Progress</span>
+            <span>{token.bondingProgress.toFixed(1)}%</span>
+          </div>
+          <div className={styles.progressBar}>
+            <div 
+              className={styles.progress} 
+              style={{ width: `${token.bondingProgress}%` }}
+            />
+          </div>
+        </div>
+
+        <div className={styles.marketCap}>
           <span className={styles.label}>
-            💫 Transactions
+            💰 Market Cap
           </span>
-          <span className={styles.value}>{token.transactions || 0}</span>
-        </div>
-        <div className={styles.stat}>
-          <span className={styles.label}>
-            🕒 Listed
-          </span>
-          <span className={styles.value}>
-            {formatTime(token.daysListed || 0)}
-          </span>
+          <span className={styles.value}>{formatValue(token.marketCap)}</span>
         </div>
       </div>
-
-      <div className={styles.priceChange}>
-        <span 
-          className={`${styles.change} ${(token.priceChange || 0) >= 0 ? styles.positive : styles.negative}`}
-        >
-          {(token.priceChange || 0) >= 0 ? '📈' : '📉'} {(token.priceChange || 0) >= 0 ? '+' : ''}{token.priceChange.toFixed(2)}%
-        </span>
-        <span className={styles.period}>6h</span>
-      </div>
-
-      <div className={styles.bondingCurve}>
-        <div className={styles.progressLabel}>
-          <span>🚀 Bonding Progress</span>
-          <span>{token.bondingProgress.toFixed(1)}%</span>
-        </div>
-        <div className={styles.progressBar}>
-          <div 
-            className={styles.progress} 
-            style={{ width: `${token.bondingProgress}%` }}
-          />
-        </div>
-      </div>
-
-      <div className={styles.marketCap}>
-        <span className={styles.label}>
-          💰 Market Cap
-        </span>
-        <span className={styles.value}>{formatValue(token.marketCap)}</span>
-      </div>
-    </div>
-  )
+    )
+  }
 
   if (loading) {
     return <div className={styles.loading}>Loading tokens...</div>
@@ -246,7 +267,7 @@ export default function LaunchpadPage() {
         <h2>Meme Coins</h2>
         
         <div className={styles.viewSelector}>
-          <button 
+        <button 
             className={`${styles.viewButton} ${activeView === 'all' ? styles.active : ''}`}
             onClick={() => setActiveView('all')}
           >
@@ -294,7 +315,7 @@ export default function LaunchpadPage() {
                 : "No tokens found"}
             </div>
           ) : (
-            tokens.map(renderTokenCard)
+            tokens.map(token => renderTokenCard(token))
           )}
         </div>
       </section>
