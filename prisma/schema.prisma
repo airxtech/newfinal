@@ -54,7 +54,7 @@ model Token {
   holders              UserToken[]
   transactions         Transaction[]
   contractAddress      String?   // After STON.fi listing
-  lastBondingUpdate    DateTime  @default(now())  // For tracking bonding curve rate
+  lastBondingUpdate    DateTime?  @default(now())  // For tracking bonding curve rate
   bondingCompleteTime  DateTime?  // When bonding curve hits 100%   
 }
 

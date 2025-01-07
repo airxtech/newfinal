@@ -10,30 +10,41 @@ export async function GET(request: Request) {
     console.log('Processing request for view:', view)
     
     let where = {}
-    let orderBy = {}
+    let orderBy: any = { createdAt: 'desc' } // Default ordering
 
     // Apply filters based on view
     switch (view) {
       case 'hot':
+        where = {
+          lastBondingUpdate: {
+            not: null,
+            gte: new Date(Date.now() - 10 * 60 * 1000) // Last 10 minutes
+          }
+        }
         orderBy = { bondingCurve: 'desc' }
         break
         
       case 'new':
-        orderBy = { createdAt: 'desc' }
+        // Already using default orderBy
         break
         
       case 'listed':
-        where = { isListed: true }
+        where = { 
+          isListed: true,
+          bondingCurve: 100
+        }
         orderBy = { listingDate: 'desc' }
         break
         
       case 'marketcap':
-        where = { bondingCurve: { lt: 100 } } // Not fully filled
+        where = { 
+          bondingCurve: { lt: 100 },
+          marketCap: { gt: 0 }
+        }
         orderBy = { marketCap: 'desc' }
         break
         
       case 'my':
-        // Handle my tokens view if user ID is provided
         const userId = searchParams.get('userId')
         if (userId) {
           where = {
@@ -44,20 +55,33 @@ export async function GET(request: Request) {
           }
         }
         break
-        
-      default:
-        orderBy = { createdAt: 'desc' }
     }
 
     console.log('Query parameters:', { where, orderBy })
 
-    // Fetch tokens with transactions and holders
+    // Execute the query
     const tokens = await prisma.token.findMany({
       where,
       orderBy,
-      include: {
-        transactions: true,
-        holders: true
+      select: {
+        id: true,
+        name: true,
+        ticker: true,
+        imageUrl: true,
+        currentPrice: true,
+        marketCap: true,
+        bondingCurve: true,
+        createdAt: true,
+        isListed: true,
+        isGuaranteed: true,
+        transactions: {
+          select: {
+            id: true,
+            type: true,
+            amount: true,
+            timestamp: true
+          }
+        }
       }
     })
 
@@ -68,14 +92,17 @@ export async function GET(request: Request) {
       const msPerDay = 1000 * 60 * 60 * 24
       const daysListed = Math.floor((Date.now() - new Date(token.createdAt).getTime()) / msPerDay)
 
+      // Calculate price change (mock for now)
+      const priceChange = Math.random() * 20 - 10 // Random value between -10 and 10
+
       return {
         id: token.id,
         name: token.name,
         ticker: token.ticker,
-        logo: token.imageUrl,
+        logo: '🪙', // Default logo
         transactions: token.transactions.length,
         daysListed,
-        priceChange: 0, // Calculate this based on transaction history
+        priceChange,
         bondingProgress: token.bondingCurve,
         marketCap: token.marketCap,
         isGuaranteed: token.isGuaranteed
@@ -88,7 +115,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('Error in tokens API:', error)
     
-    // Check if it's a Prisma error
+    // Handle Prisma errors
     if (error instanceof Error && 'code' in error) {
       console.error('Prisma error code:', error.code)
       return NextResponse.json(
