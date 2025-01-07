@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// Handle GET requests (fetching tokens)
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -12,7 +13,6 @@ export async function GET(request: Request) {
 
     switch (view) {
       case 'hot':
-        // Get tokens sorted by bonding curve rate
         tokens = await prisma.token.findMany({
           orderBy: [
             {
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
           ],
           where: {
             lastBondingUpdate: {
-              gte: new Date(Date.now() - 10 * 60 * 1000) // Last 10 minutes
+              gte: new Date(Date.now() - 10 * 60 * 1000)
             }
           }
         })
@@ -66,7 +66,6 @@ export async function GET(request: Request) {
         break
 
       case 'my':
-        // Get user's tokens (both created and held)
         const userId = searchParams.get('userId')
         if (!userId) break
 
@@ -87,7 +86,6 @@ export async function GET(request: Request) {
         break
 
       default:
-        // 'all' view - same as hot but with continuous rotation
         tokens = await prisma.token.findMany({
           orderBy: [
             {
@@ -102,6 +100,37 @@ export async function GET(request: Request) {
     console.error('Error fetching tokens:', error)
     return NextResponse.json(
       { error: 'Failed to fetch tokens' },
+      { status: 500 }
+    )
+  }
+}
+
+// Handle POST requests (creating new tokens)
+export async function POST(request: Request) {
+  try {
+    const body = await request.json()
+    const { name, ticker, description, imageUrl, creatorId } = body
+
+    const token = await prisma.token.create({
+      data: {
+        id: crypto.randomUUID(),
+        name,
+        ticker: ticker.toUpperCase(),
+        description,
+        imageUrl,
+        creatorId,
+        currentPrice: 0.00001, // Initial price
+        marketCap: 3000, // Initial market cap (300M * 0.00001)
+        bondingCurve: 0,
+        lastBondingUpdate: new Date()
+      }
+    })
+
+    return NextResponse.json(token)
+  } catch (error) {
+    console.error('Token creation error:', error)
+    return NextResponse.json(
+      { error: 'Failed to create token' },
       { status: 500 }
     )
   }
