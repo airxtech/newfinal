@@ -1,6 +1,7 @@
 // app/api/tokens/route.ts
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 // Handle GET requests (fetching tokens)
 export async function GET(request: Request) {
@@ -9,9 +10,20 @@ export async function GET(request: Request) {
     const view = searchParams.get('view') || 'all'
     console.log('API: Fetching tokens with view:', view)
     
-    let tokens: any[] = []
+    // Test database connection first
+    try {
+      await prisma.$connect()
+      console.log('Database connection successful')
+    } catch (connError) {
+      console.error('Database connection error:', connError)
+      return NextResponse.json(
+        { error: 'Database connection failed' },
+        { status: 500 }
+      )
+    }
+
+    let tokens
     const now = new Date()
-    const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000)
 
     // Base query options
     const baseQuery = {
@@ -31,107 +43,29 @@ export async function GET(request: Request) {
       }
     }
 
-    switch (view) {
-      case 'hot':
-        console.log('Fetching hot tokens...')
-        tokens = await prisma.token.findMany({
-          ...baseQuery,
-          orderBy: [
-            {
-              bondingCurve: 'desc'
-            }
-          ],
-          where: {
-            lastBondingUpdate: {
-              gte: new Date(Date.now() - 10 * 60 * 1000) // Last 10 minutes
-            }
+    try {
+      // Default query for all tokens
+      tokens = await prisma.token.findMany({
+        ...baseQuery,
+        orderBy: [
+          {
+            bondingCurve: 'desc'
           }
-        })
-        break
+        ]
+      })
 
-      case 'new':
-        console.log('Fetching new tokens...')
-        tokens = await prisma.token.findMany({
-          ...baseQuery,
-          orderBy: [
-            {
-              createdAt: 'desc'
-            }
-          ]
-        })
-        break
-
-      case 'listed':
-        console.log('Fetching listed tokens...')
-        tokens = await prisma.token.findMany({
-          ...baseQuery,
-          where: {
-            bondingCurve: 100,
-            isListed: true
-          },
-          orderBy: [
-            {
-              bondingCompleteTime: 'desc'
-            }
-          ]
-        })
-        break
-
-      case 'marketcap':
-        console.log('Fetching tokens by market cap...')
-        tokens = await prisma.token.findMany({
-          ...baseQuery,
-          where: {
-            bondingCurve: {
-              lt: 100
-            }
-          },
-          orderBy: [
-            {
-              marketCap: 'desc'
-            }
-          ]
-        })
-        break
-
-      case 'my':
-        console.log('Fetching user tokens...')
-        const userId = searchParams.get('userId')
-        if (!userId) {
-          console.log('No userId provided for my view')
-          break
-        }
-
-        tokens = await prisma.token.findMany({
-          ...baseQuery,
-          where: {
-            OR: [
-              { creatorId: userId },
-              {
-                holders: {
-                  some: {
-                    userId
-                  }
-                }
-              }
-            ]
-          }
-        })
-        break
-
-      default:
-        console.log('Fetching all tokens...')
-        tokens = await prisma.token.findMany({
-          ...baseQuery,
-          orderBy: [
-            {
-              bondingCurve: 'desc'
-            }
-          ]
-        })
+      console.log('Initial query successful, found tokens:', tokens?.length)
+    } catch (queryError) {
+      console.error('Query error:', queryError)
+      if (queryError instanceof Prisma.PrismaClientKnownRequestError) {
+        console.error('Prisma error code:', queryError.code)
+        return NextResponse.json(
+          { error: `Database query failed: ${queryError.code}` },
+          { status: 500 }
+        )
+      }
+      throw queryError
     }
-
-    console.log(`Found ${tokens?.length || 0} tokens`)
 
     // Transform tokens for response
     const transformedTokens = tokens?.map(token => {
@@ -155,10 +89,15 @@ export async function GET(request: Request) {
     console.log('Returning transformed tokens:', transformedTokens.length)
     return NextResponse.json(transformedTokens)
   } catch (error) {
-    console.error('Error in tokens API:', error)
+    console.error('Unhandled error in tokens API:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch tokens' },
+      { 
+        error: 'Failed to fetch tokens',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
+  } finally {
+    await prisma.$disconnect()
   }
 }
