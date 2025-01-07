@@ -25,6 +25,7 @@ export default function LaunchpadPage() {
   const [activeView, setActiveView] = useState<'all' | 'hot' | 'new' | 'listed' | 'marketcap' | 'my'>('all')
   const [tokens, setTokens] = useState<Token[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [highlightedToken, setHighlightedToken] = useState<string | null>(null)
 
   useEffect(() => {
@@ -41,17 +42,26 @@ export default function LaunchpadPage() {
 
   const fetchTokens = async () => {
     try {
+      setError(null)
       console.log('Fetching tokens for view:', activeView)
       const query = activeView !== 'all' ? `?view=${activeView}` : ''
+      console.log('Making request to:', `/api/tokens${query}`)
+
       const response = await fetch(`/api/tokens${query}`)
-      console.log('Token API response:', response)
+      console.log('Token API response status:', response.status)
       
       if (!response.ok) {
         throw new Error(`Failed to fetch tokens: ${response.status}`)
       }
       
       const data = await response.json()
-      console.log('Received tokens:', data)
+      console.log('Received tokens data:', data)
+
+      if (!Array.isArray(data)) {
+        console.error('Received non-array data:', data)
+        throw new Error('Invalid data format received from API')
+      }
+      
       setTokens(data)
       
       if (activeView === 'all' && data.length > 0) {
@@ -70,6 +80,7 @@ export default function LaunchpadPage() {
       }
     } catch (error) {
       console.error('Error fetching tokens:', error)
+      setError(error instanceof Error ? error.message : 'Failed to fetch tokens')
     } finally {
       setLoading(false)
     }
@@ -92,7 +103,11 @@ export default function LaunchpadPage() {
   }
 
   if (loading) {
-    return <div className={styles.loading}>Loading...</div>
+    return <div className={styles.loading}>Loading tokens...</div>
+  }
+
+  if (error) {
+    return <div className={styles.error}>Error: {error}</div>
   }
 
   return (
@@ -174,10 +189,14 @@ export default function LaunchpadPage() {
 
         <div className={styles.tokenGrid}>
           {tokens.length === 0 ? (
-            <div className={styles.noTokens}>No tokens found</div>
+            <div className={styles.noTokens}>
+              {activeView === 'my' 
+                ? "You don't have any tokens yet"
+                : "No tokens found"}
+            </div>
           ) : (
             tokens.map(token => {
-              console.log('Navigating to token:', token.id); // Log outside JSX
+              console.log('Rendering token:', token.id)
               return (
                 <div 
                   key={token.id} 
@@ -232,7 +251,7 @@ export default function LaunchpadPage() {
                     <span className={styles.value}>{formatValue(token.marketCap || 0)}</span>
                   </div>
                 </div>
-              );
+              )
             })
           )}
         </div>

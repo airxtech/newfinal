@@ -1,3 +1,4 @@
+// app/api/tokens/route.ts
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
@@ -6,14 +7,35 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const view = searchParams.get('view') || 'all'
+    console.log('API: Fetching tokens with view:', view)
     
-    let tokens
+    let tokens: any[] = []
     const now = new Date()
     const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000)
 
+    // Base query options
+    const baseQuery = {
+      select: {
+        id: true,
+        name: true,
+        ticker: true,
+        imageUrl: true,
+        currentPrice: true,
+        marketCap: true,
+        bondingCurve: true,
+        createdAt: true,
+        transactions: true,
+        isListed: true,
+        bondingCompleteTime: true,
+        lastBondingUpdate: true
+      }
+    }
+
     switch (view) {
       case 'hot':
+        console.log('Fetching hot tokens...')
         tokens = await prisma.token.findMany({
+          ...baseQuery,
           orderBy: [
             {
               bondingCurve: 'desc'
@@ -21,14 +43,16 @@ export async function GET(request: Request) {
           ],
           where: {
             lastBondingUpdate: {
-              gte: new Date(Date.now() - 10 * 60 * 1000)
+              gte: new Date(Date.now() - 10 * 60 * 1000) // Last 10 minutes
             }
           }
         })
         break
 
       case 'new':
+        console.log('Fetching new tokens...')
         tokens = await prisma.token.findMany({
+          ...baseQuery,
           orderBy: [
             {
               createdAt: 'desc'
@@ -38,9 +62,12 @@ export async function GET(request: Request) {
         break
 
       case 'listed':
+        console.log('Fetching listed tokens...')
         tokens = await prisma.token.findMany({
+          ...baseQuery,
           where: {
-            bondingCurve: 100
+            bondingCurve: 100,
+            isListed: true
           },
           orderBy: [
             {
@@ -51,7 +78,9 @@ export async function GET(request: Request) {
         break
 
       case 'marketcap':
+        console.log('Fetching tokens by market cap...')
         tokens = await prisma.token.findMany({
+          ...baseQuery,
           where: {
             bondingCurve: {
               lt: 100
@@ -59,17 +88,22 @@ export async function GET(request: Request) {
           },
           orderBy: [
             {
-              bondingCurve: 'desc'
+              marketCap: 'desc'
             }
           ]
         })
         break
 
       case 'my':
+        console.log('Fetching user tokens...')
         const userId = searchParams.get('userId')
-        if (!userId) break
+        if (!userId) {
+          console.log('No userId provided for my view')
+          break
+        }
 
         tokens = await prisma.token.findMany({
+          ...baseQuery,
           where: {
             OR: [
               { creatorId: userId },
@@ -86,7 +120,9 @@ export async function GET(request: Request) {
         break
 
       default:
+        console.log('Fetching all tokens...')
         tokens = await prisma.token.findMany({
+          ...baseQuery,
           orderBy: [
             {
               bondingCurve: 'desc'
@@ -95,42 +131,33 @@ export async function GET(request: Request) {
         })
     }
 
-    return NextResponse.json(tokens || [])
+    console.log(`Found ${tokens?.length || 0} tokens`)
+
+    // Transform tokens for response
+    const transformedTokens = tokens?.map(token => {
+      // Calculate days listed
+      const daysListed = token.createdAt
+        ? (new Date().getTime() - new Date(token.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+        : 0
+
+      // Calculate price change (mock data for now)
+      const priceChange = Math.random() * 20 - 10 // Random value between -10 and 10
+
+      return {
+        ...token,
+        logo: '🪙', // Default logo
+        transactions: token.transactions?.length || 0,
+        daysListed,
+        priceChange
+      }
+    }) || []
+
+    console.log('Returning transformed tokens:', transformedTokens.length)
+    return NextResponse.json(transformedTokens)
   } catch (error) {
-    console.error('Error fetching tokens:', error)
+    console.error('Error in tokens API:', error)
     return NextResponse.json(
       { error: 'Failed to fetch tokens' },
-      { status: 500 }
-    )
-  }
-}
-
-// Handle POST requests (creating new tokens)
-export async function POST(request: Request) {
-  try {
-    const body = await request.json()
-    const { name, ticker, description, imageUrl, creatorId } = body
-
-    const token = await prisma.token.create({
-      data: {
-        id: crypto.randomUUID(),
-        name,
-        ticker: ticker.toUpperCase(),
-        description,
-        imageUrl,
-        creatorId,
-        currentPrice: 0.00001, // Initial price
-        marketCap: 3000, // Initial market cap (300M * 0.00001)
-        bondingCurve: 0,
-        lastBondingUpdate: new Date()
-      }
-    })
-
-    return NextResponse.json(token)
-  } catch (error) {
-    console.error('Token creation error:', error)
-    return NextResponse.json(
-      { error: 'Failed to create token' },
       { status: 500 }
     )
   }
