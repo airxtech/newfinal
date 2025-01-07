@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import '../globals.css'
 import styles from './page.module.css'
 import { Plus } from 'lucide-react'
 import TransactionStrip from '../components/shared/TransactionStrip'
