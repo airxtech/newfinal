@@ -128,3 +128,14 @@
     font-weight: 500;
     color: var(--tg-theme-text-color, #000000);
   }
+
+  .highlighted {
+    background: var(--tg-theme-button-color);
+    animation: highlight 1s infinite;
+  }
+  
+  @keyframes highlight {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+  }

@@ -32,28 +32,30 @@ model User {
 }
 
 model Token {
-  id                String    @id @map("_id")
-  name              String
-  ticker            String    
-  description       String
-  imageUrl          String
-  website           String?
-  twitter           String?
-  telegram          String?
-  linkedin          String?   // Only for ZOA Guaranteed tokens
-  isGuaranteed      Boolean   @default(false)
-  creator           User      @relation("TokenCreator", fields: [creatorId], references: [id])
-  creatorId         String
-  totalSupply       Float     @default(300000000) // 300M for regular tokens
-  currentPrice      Float
-  marketCap         Float
-  bondingCurve      Float     @default(0) // Percentage filled
-  isListed          Boolean   @default(false)
-  listingDate       DateTime?
-  createdAt         DateTime  @default(now())
-  holders           UserToken[]
-  transactions      Transaction[]
-  contractAddress   String?   // After STON.fi listing   
+  id                   String    @id @map("_id")
+  name                 String
+  ticker               String    
+  description          String
+  imageUrl             String
+  website              String?
+  twitter              String?
+  telegram             String?
+  linkedin             String?   // Only for ZOA Guaranteed tokens
+  isGuaranteed         Boolean   @default(false)
+  creator              User      @relation("TokenCreator", fields: [creatorId], references: [id])
+  creatorId            String
+  totalSupply          Float     @default(300000000) // 300M for regular tokens
+  currentPrice         Float
+  marketCap            Float
+  bondingCurve         Float     @default(0) // Percentage filled
+  isListed             Boolean   @default(false)
+  listingDate          DateTime?
+  createdAt            DateTime  @default(now())
+  holders              UserToken[]
+  transactions         Transaction[]
+  contractAddress      String?   // After STON.fi listing
+  lastBondingUpdate    DateTime  @default(now())  // For tracking bonding curve rate
+  bondingCompleteTime  DateTime?  // When bonding curve hits 100%   
 }
 
 model UserToken {

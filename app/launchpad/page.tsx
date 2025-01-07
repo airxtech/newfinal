@@ -25,13 +25,19 @@ export default function LaunchpadPage() {
   const [activeView, setActiveView] = useState<'all' | 'hot' | 'new' | 'listed' | 'marketcap' | 'my'>('all')
   const [tokens, setTokens] = useState<Token[]>([])
   const [loading, setLoading] = useState(true)
+  const [highlightedToken, setHighlightedToken] = useState<string | null>(null)
 
   useEffect(() => {
     fetchTokens()
-    // Refetch every 10 seconds to keep the list updated
-  const interval = setInterval(fetchTokens, 10000)
-  return () => clearInterval(interval)
-}, [activeView])
+    // For Hot view and All view updates
+    const interval = setInterval(() => {
+      if (activeView === 'hot' || activeView === 'all') {
+        fetchTokens()
+      }
+    }, activeView === 'hot' ? 60000 : 5000) // 1 min for hot, 5s for all
+
+    return () => clearInterval(interval)
+  }, [activeView])
 
   const fetchTokens = async () => {
     try {
@@ -47,6 +53,21 @@ export default function LaunchpadPage() {
       const data = await response.json()
       console.log('Received tokens:', data)
       setTokens(data)
+      
+      if (activeView === 'all' && data.length > 0) {
+        setHighlightedToken(data[0].id)
+        // Rotate tokens every 5 seconds
+        setTimeout(() => {
+          setTokens(prev => {
+            const newTokens = [...prev]
+            const first = newTokens.shift()
+            if (first) {
+              newTokens.push(first)
+            }
+            return newTokens
+          })
+        }, 5000)
+      }
     } catch (error) {
       console.error('Error fetching tokens:', error)
     } finally {
