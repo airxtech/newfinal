@@ -2,7 +2,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Settings, ArrowLeft, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Settings, ToggleLeft, ToggleRight } from 'lucide-react'
 import { useTonConnectUI } from '@tonconnect/ui-react'
 import styles from './TradeModal.module.css'
 
@@ -71,6 +71,21 @@ export const TradeModal: React.FC<TradeModalProps> = ({
       setZoaBonus({ tokens: 0, usdValue: 0 })
     }
   }, [amount, type, token.currentPrice, userBalance.zoa, useZoaBonus])
+
+  useEffect(() => {
+    if (isOpen) {
+      // Set up the Telegram Mini Apps back button
+      window.Telegram.WebApp.setupBackButton(true)
+      // Handle the back button pressed event
+      const handleBackButtonPressed = () => {
+        onClose()
+      }
+      window.Telegram.WebApp.onEvent('back_button_pressed', handleBackButtonPressed)
+      return () => {
+        window.Telegram.WebApp.offEvent('back_button_pressed', handleBackButtonPressed)
+      }
+    }
+  }, [isOpen, onClose])
 
   const validateTransaction = () => {
     if (!connected) return 'Connect Wallet'
@@ -152,9 +167,6 @@ export const TradeModal: React.FC<TradeModalProps> = ({
   return (
     <div className={styles.fullscreenPage}>
       <div className={styles.header}>
-        <button onClick={onClose} className={styles.backButton}>
-          <ArrowLeft size={24} />
-        </button>
         <h1 className={styles.title}>
           {type === 'buy' ? 'Buy' : 'Sell'} {token.ticker}
         </h1>

@@ -228,33 +228,3 @@
   margin-top: 12px;
   color: var(--tg-theme-hint-color, #999999);
 }
-
-/* Black hole animation */
-@keyframes blackHole {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.5);
-    opacity: 0.5;
-  }
-  100% {
-    transform: scale(2);
-    opacity: 0;
-  }
-}
-
-.blackHole {
-  position: absolute;
-  width: 100px;
-  height: 100px;
-  background: radial-gradient(circle, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 70%);
-  border-radius: 50%;
-  animation: blackHole 3s infinite;
-  z-index: 1000;
-}
-
-.active .blackHole {
-  animation: blackHole 3s infinite;
-}
