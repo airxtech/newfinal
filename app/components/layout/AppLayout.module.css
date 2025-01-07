@@ -186,7 +186,7 @@
   height: 20px;
   background: transparent;
   border-top-left-radius: 20px;
-  box-shadow: -1px -10px 0 var(--clr);
+  box-shadow: -1px -10px 0 var(--tg-theme-bg-color, #ffffff);
 }
 
 .navItem:nth-child(1).active ~ .indicator {
