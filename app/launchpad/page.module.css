@@ -117,3 +117,180 @@
       grid-template-columns: 1fr;
     }
   }
+
+  .tokenCard {
+    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    border-radius: 16px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .tokenCard:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  .tokenCard.highlighted {
+    background: linear-gradient(135deg, var(--tg-theme-button-color, #2481cc) 0%, var(--tg-theme-secondary-bg-color, #f0f0f0) 100%);
+    animation: highlight 2s infinite;
+    border: 2px solid var(--tg-theme-button-color, #2481cc);
+  }
+  
+  @keyframes highlight {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+  }
+  
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  
+  .logo {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    background-color: var(--tg-theme-bg-color, #ffffff);
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+  }
+  
+  .tokenCard:hover .logo {
+    transform: scale(1.05);
+  }
+  
+  .nameContainer h3 {
+    font-size: 20px;
+    margin-bottom: 6px;
+    color: var(--tg-theme-text-color, #000000);
+  }
+  
+  .ticker {
+    font-size: 16px;
+    color: var(--tg-theme-hint-color, #999999);
+    padding: 4px 8px;
+    background-color: var(--tg-theme-bg-color, #ffffff);
+    border-radius: 6px;
+    display: inline-block;
+  }
+  
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  
+  .stat {
+    background-color: var(--tg-theme-bg-color, #ffffff);
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+  }
+  
+  .stat .label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--tg-theme-hint-color, #999999);
+    margin-bottom: 6px;
+  }
+  
+  .stat .value {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--tg-theme-text-color, #000000);
+  }
+  
+  .priceChange {
+    margin-bottom: 20px;
+    padding: 10px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background-color: var(--tg-theme-bg-color, #ffffff);
+  }
+  
+  .change {
+    font-size: 18px;
+    font-weight: 600;
+  }
+  
+  .positive {
+    color: #10b981;
+  }
+  
+  .negative {
+    color: #ef4444;
+  }
+  
+  .period {
+    font-size: 14px;
+    color: var(--tg-theme-hint-color, #999999);
+    padding: 4px 8px;
+    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    border-radius: 6px;
+  }
+  
+  .bondingCurve {
+    margin-bottom: 20px;
+  }
+  
+  .progressLabel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  
+  .progressBar {
+    height: 12px;
+    background-color: var(--tg-theme-bg-color, #ffffff);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .progress {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6 0%, #10b981 100%);
+    border-radius: 6px;
+    transition: width 0.5s ease;
+  }
+  
+  .marketCap {
+    background-color: var(--tg-theme-bg-color, #ffffff);
+    padding: 12px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .marketCap .label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--tg-theme-hint-color, #999999);
+  }
+  
+  .marketCap .value {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--tg-theme-text-color, #000000);
+  }
