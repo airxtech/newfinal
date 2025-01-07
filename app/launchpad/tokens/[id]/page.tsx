@@ -1,13 +1,15 @@
 // app/launchpad/tokens/[id]/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, ExternalLink, Users, Clock, LineChart } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Users, Clock, LineChart, RefreshCw } from 'lucide-react'
 import { useTonConnectUI } from '@tonconnect/ui-react'
 import { TradeModal } from '@/app/components/token/TradeModal'
 import styles from './page.module.css'
 import { PriceChart } from '@/app/components/token/PriceChart'
+import { Spinner } from '@/app/components/ui/spinner'
+import io from 'socket.io-client'
 
 interface TokenData {
   id: string
@@ -67,6 +69,23 @@ interface UserBalances {
   zoa: number
 }
 
+interface LoadingStates {
+  token: boolean
+  transactions: boolean
+  holders: boolean
+  userBalances: boolean
+  more: boolean
+}
+
+interface ErrorStates {
+  token?: string
+  transactions?: string
+  holders?: string
+  userBalances?: string
+}
+
+const TRANSACTIONS_PER_PAGE = 20
+
 export default function TokenPage() {
   const params = useParams()
   const router = useRouter()
@@ -76,75 +95,251 @@ export default function TokenPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'trades' | 'holders'>('overview')
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [holders, setHolders] = useState<Holder[]>([])
-  const [loading, setLoading] = useState(true)
   const [showTradeModal, setShowTradeModal] = useState(false)
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy')
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingStates, setLoadingStates] = useState<LoadingStates>({
+    token: true,
+    transactions: false,
+    holders: false,
+    userBalances: false,
+    more: false
+  })
+  const [errors, setErrors] = useState<ErrorStates>({})
   const [userBalances, setUserBalances] = useState<UserBalances>({
     ton: 0,
     token: 0,
     zoa: 0
   })
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
-  useEffect(() => {
-    fetchTokenData()
-    if (connected) {
-      fetchUserBalances()
+  const observerRef = useRef<IntersectionObserver | null>(null)
+  const lastTransactionRef = useRef<HTMLDivElement | null>(null)
+
+  const handleError = (error: any, type: keyof ErrorStates) => {
+    const message = error?.response?.data?.message || error.message || 'An error occurred'
+    setErrors(prev => ({ ...prev, [type]: message }))
+    window.Telegram.WebApp.showPopup({
+      title: 'Error',
+      message,
+      buttons: [{ type: 'close' }]
+    })
+  }
+
+  const retryRequest = async <T,>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> => {
+    let lastError: Error | null = null
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await fn()
+      } catch (error) {
+        lastError = error as Error
+        if (attempt === maxAttempts) break
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+      }
     }
 
-    // Set up real-time updates
-    const interval = setInterval(fetchTokenData, 30000) // Update every 30 seconds
-    return () => clearInterval(interval)
-  }, [params.id, connected])
+    throw lastError
+  }
 
-  const fetchTokenData = async () => {
+  useEffect(() => {
+    const socket = io(process.env.NEXT_PUBLIC_WEBSOCKET_URL || '', {
+      query: { tokenId: params.id }
+    })
+
+    socket.on('price_update', (data: { price: number }) => {
+      setToken(prev => prev ? { ...prev, currentPrice: data.price } : null)
+    })
+
+    socket.on('new_transaction', (transaction: Transaction) => {
+      setTransactions(prev => [transaction, ...prev])
+      setToken(prev => {
+        if (!prev) return null
+        const tokenChange = transaction.type === 'BUY' ? transaction.tokenAmount : -transaction.tokenAmount
+        return {
+          ...prev,
+          transactionCount: prev.transactionCount + 1,
+          currentTokensSold: prev.currentTokensSold + tokenChange,
+          marketCap: prev.currentPrice * (prev.currentTokensSold + tokenChange)
+        }
+      })
+    })
+
+    return () => {
+      socket.disconnect()
+    }
+  }, [params.id])
+
+  useEffect(() => {
+    if (!hasMore || loadingStates.more) return
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          loadMoreTransactions()
+        }
+      },
+      { threshold: 0.5 }
+    )
+
+    if (lastTransactionRef.current) {
+      observer.observe(lastTransactionRef.current)
+    }
+
+    observerRef.current = observer
+
+    return () => observer.disconnect()
+  }, [hasMore, loadingStates.more])
+
+  const fetchTokenData = useCallback(async (silent = false) => {
     try {
-      const [tokenResponse, txResponse, holdersResponse] = await Promise.all([
-        fetch(`/api/tokens/${params.id}`),
-        fetch(`/api/tokens/${params.id}/transactions`),
-        fetch(`/api/tokens/${params.id}/holders`)
-      ])
+      if (!silent) setLoadingStates(prev => ({ ...prev, token: true }))
 
-      if (!tokenResponse.ok) throw new Error('Failed to fetch token')
-      
-      const [tokenData, txData, holdersData] = await Promise.all([
-        tokenResponse.json(),
-        txResponse.ok ? txResponse.json() : [],
-        holdersResponse.ok ? holdersResponse.json() : []
-      ])
+      const response = await retryRequest(() => 
+        fetch(`/api/tokens/${params.id}`)
+      )
+      const data = await response.json()
 
-      setToken(tokenData)
-      setTransactions(txData)
-      setHolders(holdersData)
-      setLoading(false)
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch token')
+
+      setToken(data)
+      setErrors(prev => ({ ...prev, token: undefined }))
     } catch (error) {
-      console.error('Error fetching token data:', error)
-      setLoading(false)
+      handleError(error, 'token')
+    } finally {
+      if (!silent) setLoadingStates(prev => ({ ...prev, token: false }))
+    }
+  }, [params.id])
+
+  const fetchTransactions = async () => {
+    try {
+      setLoadingStates(prev => ({ ...prev, transactions: true }))
+
+      const response = await retryRequest(() =>
+        fetch(`/api/tokens/${params.id}/transactions?page=1&limit=${TRANSACTIONS_PER_PAGE}`)
+      )
+      const data = await response.json()
+
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch transactions')
+
+      setTransactions(data.transactions)
+      setHasMore(data.hasMore)
+      setPage(2)
+      setErrors(prev => ({ ...prev, transactions: undefined }))
+    } catch (error) {
+      handleError(error, 'transactions')
+    } finally {
+      setLoadingStates(prev => ({ ...prev, transactions: false }))
     }
   }
 
-  const fetchUserBalances = async () => {
+  const loadMoreTransactions = async () => {
+    if (!hasMore || loadingStates.more) return
+
     try {
+      setLoadingStates(prev => ({ ...prev, more: true }))
+
+      const response = await retryRequest(() =>
+        fetch(`/api/tokens/${params.id}/transactions?page=${page}&limit=${TRANSACTIONS_PER_PAGE}`)
+      )
+      const data = await response.json()
+
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch more transactions')
+
+      setTransactions(prev => [...prev, ...data.transactions])
+      setHasMore(data.hasMore)
+      setPage(prev => prev + 1)
+    } catch (error) {
+      handleError(error, 'transactions')
+    } finally {
+      setLoadingStates(prev => ({ ...prev, more: false }))
+    }
+  }
+
+  const fetchHolders = async () => {
+    try {
+      setLoadingStates(prev => ({ ...prev, holders: true }))
+
+      const response = await retryRequest(() =>
+        fetch(`/api/tokens/${params.id}/holders`)
+      )
+      const data = await response.json()
+
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch holders')
+
+      setHolders(data)
+      setErrors(prev => ({ ...prev, holders: undefined }))
+    } catch (error) {
+      handleError(error, 'holders')
+    } finally {
+      setLoadingStates(prev => ({ ...prev, holders: false }))
+    }
+  }
+
+  const fetchUserBalances = useCallback(async () => {
+    if (!connected || !tonConnectUI.wallet?.account.address) return
+
+    try {
+      setLoadingStates(prev => ({ ...prev, userBalances: true }))
+
       const webApp = window.Telegram.WebApp
-      if (!webApp?.initDataUnsafe?.user?.id || !tonConnectUI.wallet?.account.address) return
+      if (!webApp?.initDataUnsafe?.user?.id) return
 
       const [tonResponse, tokenResponse, userResponse] = await Promise.all([
-        fetch(`/api/ton/balance?address=${tonConnectUI.wallet.account.address}`),
-        fetch(`/api/tokens/${params.id}/balance?telegramId=${webApp.initDataUnsafe.user.id}`),
-        fetch(`/api/user?telegramId=${webApp.initDataUnsafe.user.id}`)
+        retryRequest(() => 
+          fetch(`/api/ton/balance?address=${tonConnectUI.wallet?.account.address}`)
+        ),
+        retryRequest(() => 
+          fetch(`/api/tokens/${params.id}/balance?telegramId=${webApp.initDataUnsafe.user.id}`)
+        ),
+        retryRequest(() => 
+          fetch(`/api/user?telegramId=${webApp.initDataUnsafe.user.id}`)
+        )
       ])
 
-      const tonData = await tonResponse.json()
-      const tokenData = await tokenResponse.json()
-      const userData = await userResponse.json()
+      const [tonData, tokenData, userData] = await Promise.all([
+        tonResponse.json(),
+        tokenResponse.json(),
+        userResponse.json()
+      ])
+
+      if (!tonResponse.ok || !tokenResponse.ok || !userResponse.ok) {
+        throw new Error('Failed to fetch balances')
+      }
 
       setUserBalances({
         ton: Number(tonData.result?.balance || 0) / 1e9,
         token: tokenData.balance || 0,
         zoa: userData.zoaBalance || 0
       })
+      setErrors(prev => ({ ...prev, userBalances: undefined }))
     } catch (error) {
-      console.error('Error fetching user balances:', error)
+      handleError(error, 'userBalances')
+    } finally {
+      setLoadingStates(prev => ({ ...prev, userBalances: false }))
     }
+  }, [connected, params.id, tonConnectUI.wallet?.account.address])
+
+  useEffect(() => {
+    fetchTokenData()
+    fetchTransactions()
+    fetchHolders()
+    if (connected) {
+      fetchUserBalances()
+    }
+  }, [fetchTokenData, fetchUserBalances, connected])
+
+  const handleRefresh = async () => {
+    if (isRefreshing) return
+    setIsRefreshing(true)
+    await Promise.all([
+      fetchTokenData(true),
+      fetchTransactions(),
+      fetchHolders(),
+      connected ? fetchUserBalances() : Promise.resolve()
+    ])
+    setIsRefreshing(false)
   }
 
   const handleTrade = (type: 'buy' | 'sell') => {
@@ -176,12 +371,21 @@ export default function TokenPage() {
     }).format(date)
   }
 
-  if (loading) {
-    return <div className={styles.loading}>Loading...</div>
+  if (loadingStates.token) {
+    return (
+      <div className={styles.loading}>
+        <Spinner />
+        <span>Loading token data...</span>
+      </div>
+    )
   }
 
   if (!token) {
-    return <div className={styles.error}>Token not found</div>
+    return (
+      <div className={styles.error}>
+        {errors.token || 'Token not found'}
+      </div>
+    )
   }
 
   return (
@@ -197,7 +401,7 @@ export default function TokenPage() {
               alt={token.name} 
               className={styles.tokenImage}
               onError={(e) => {
-                e.currentTarget.src = 'data:image/svg+xml,...' // Add placeholder SVG
+                e.currentTarget.src = `/token-placeholder.svg`
               }}
             />
           ) : (
@@ -244,7 +448,7 @@ export default function TokenPage() {
       <PriceChart tokenId={token.id} currentPrice={token.currentPrice} />
 
       <div className={styles.bondingCurve}>
-        <div className={styles.curveHeader}>
+      <div className={styles.curveHeader}>
           <span>Bonding Curve Progress</span>
           <span>{token.bondingCurve}%</span>
         </div>
@@ -326,35 +530,65 @@ export default function TokenPage() {
 
         {activeTab === 'trades' && (
           <div className={styles.trades}>
-            {transactions.length === 0 ? (
+            {loadingStates.transactions ? (
+              <div className={styles.loading}>
+                <Spinner />
+                <span>Loading transactions...</span>
+              </div>
+            ) : transactions.length === 0 ? (
               <div className={styles.empty}>No transactions yet</div>
             ) : (
-              transactions.map(tx => (
-                <div key={tx.id} className={styles.transaction}>
-                  <div className={styles.txInfo}>
-                    <span className={styles.address}>
-                      {tx.user?.username || formatAddress(tx.address)}
-                    </span>
-                    <span className={`${styles.type} ${styles[tx.type.toLowerCase()]}`}>
-                      {tx.type}
-                    </span>
-                    <span className={styles.amount}>
-                      {formatValue(tx.amount)}
-                    </span>
+              <>
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className={`${styles.refreshButton} ${isRefreshing ? styles.refreshing : ''}`}
+                >
+                  <RefreshCw size={20} />
+                </button>
+                
+                {transactions.map((tx, index) => (
+                  <div 
+                    key={tx.id} 
+                    ref={index === transactions.length - 1 ? lastTransactionRef : null}
+                    className={styles.transaction}
+                  >
+                    <div className={styles.txInfo}>
+                      <span className={styles.address}>
+                        {tx.user?.username || formatAddress(tx.address)}
+                      </span>
+                      <span className={`${styles.type} ${styles[tx.type.toLowerCase()]}`}>
+                        {tx.type}
+                      </span>
+                      <span className={styles.amount}>
+                        {formatValue(tx.amount)}
+                      </span>
+                    </div>
+                    <div className={styles.txDetails}>
+                      <span>{tx.tokenAmount.toFixed(2)} {token.ticker}</span>
+                      <span className={styles.time}>{formatTime(tx.timestamp)}</span>
+                    </div>
                   </div>
-                  <div className={styles.txDetails}>
-                    <span>{tx.tokenAmount.toFixed(2)} {token.ticker}</span>
-                    <span className={styles.time}>{formatTime(tx.timestamp)}</span>
+                ))}
+                {loadingStates.more && (
+                  <div className={styles.loadingMore}>
+                    <Spinner />
+                    <span>Loading more transactions...</span>
                   </div>
-                </div>
-              ))
+                )}
+              </>
             )}
           </div>
         )}
 
         {activeTab === 'holders' && (
           <div className={styles.holders}>
-            {holders.length === 0 ? (
+            {loadingStates.holders ? (
+              <div className={styles.loading}>
+                <Spinner />
+                <span>Loading holders...</span>
+              </div>
+            ) : holders.length === 0 ? (
               <div className={styles.empty}>No holders yet</div>
             ) : (
               holders.map((holder, index) => (
@@ -389,13 +623,14 @@ export default function TokenPage() {
             <button 
               className={styles.buyButton}
               onClick={() => handleTrade('buy')}
+              disabled={loadingStates.userBalances}
             >
               Buy
             </button>
             <button 
               className={styles.sellButton}
               onClick={() => handleTrade('sell')}
-              disabled={!userBalances.token}
+              disabled={loadingStates.userBalances || !userBalances.token}
             >
               Sell
             </button>

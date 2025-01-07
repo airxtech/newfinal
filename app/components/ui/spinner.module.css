@@ -1,0 +1,59 @@
+.spinner {
+    display: inline-block;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    animation: spin 1s linear infinite;
+  }
+  
+  .small {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+  }
+  
+  .medium {
+    width: 24px;
+    height: 24px;
+    border-width: 2px;
+  }
+  
+  .large {
+    width: 32px;
+    height: 32px;
+    border-width: 3px;
+  }
+  
+  .primary {
+    border-top-color: var(--tg-theme-button-color, #2481cc);
+    border-right-color: var(--tg-theme-button-color, #2481cc);
+    border-bottom-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    border-left-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  }
+  
+  .white {
+    border-top-color: white;
+    border-right-color: white;
+    border-bottom-color: rgba(255, 255, 255, 0.2);
+    border-left-color: rgba(255, 255, 255, 0.2);
+  }
+  
+  .visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
