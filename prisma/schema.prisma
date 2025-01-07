@@ -31,6 +31,22 @@ model User {
   createdTokens    Token[]  @relation("TokenCreator")
 }
 
+model BondingCurveStep {
+  id                String   @id @map("_id")
+  stepNumber        Int      @unique
+  tokensSold        Int
+  priceInTon        Float
+  tonCollected      Float
+  totalTonCollected Float
+  createdAt         DateTime @default(now())
+}
+
+model TonPrice {
+  id              String   @id @map("_id")
+  price           Float    // USD value of 1 TON
+  timestamp       DateTime @default(now())
+}
+
 model Token {
   id                   String    @id @map("_id")
   name                 String
@@ -40,12 +56,14 @@ model Token {
   website              String?
   twitter              String?
   telegram             String?
-  linkedin             String?   // Only for ZOA Guaranteed tokens
+  linkedin             String?   
   isGuaranteed         Boolean   @default(false)
   creator              User      @relation("TokenCreator", fields: [creatorId], references: [id])
   creatorId            String
-  totalSupply          Float     @default(300000000) // 300M for regular tokens
-  currentPrice         Float
+  totalSupply          Float     @default(800000000) // Updated to 800M tokens
+  currentStep          Int       @default(0)  // Current step in bonding curve
+  tokensSold           Int       @default(0)  // Total tokens currently sold
+  currentPrice         Float     // Current price in USD
   marketCap            Float
   bondingCurve         Float     @default(0) // Percentage filled
   isListed             Boolean   @default(false)
@@ -53,9 +71,10 @@ model Token {
   createdAt            DateTime  @default(now())
   holders              UserToken[]
   transactions         Transaction[]
-  contractAddress      String?   // After STON.fi listing
-  lastBondingUpdate    DateTime?  @default(now())  // For tracking bonding curve rate
-  bondingCompleteTime  DateTime?  // When bonding curve hits 100%   
+  contractAddress      String?   
+  lastBondingUpdate    DateTime? @default(now())
+  bondingCompleteTime  DateTime?
+  lastPriceUpdate      DateTime  @default(now())
 }
 
 model UserToken {

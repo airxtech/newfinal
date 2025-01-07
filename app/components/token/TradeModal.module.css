@@ -1,3 +1,4 @@
+/* app/components/token/TradeModal.module.css */
 .fullscreenPage {
   position: fixed;
   inset: 0;
@@ -69,10 +70,42 @@
   margin-top: 8px;
 }
 
+.percentageButtons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.percentButton {
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  color: var(--tg-theme-text-color, #000000);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.percentButton:hover {
+  background-color: var(--tg-theme-button-color, #2481cc);
+  color: var(--tg-theme-button-text-color, #ffffff);
+}
+
+.estimatedReceived {
+  background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  padding: 16px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
 .slippageSection,
 .bonusSection {
   background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
 }
@@ -82,8 +115,6 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
-  font-size: 16px;
-  font-weight: 500;
 }
 
 .settingsButton,
@@ -114,6 +145,7 @@
   font-size: 14px;
   cursor: pointer;
   color: var(--tg-theme-text-color, #000000);
+  transition: all 0.2s;
 }
 
 .slippageOption.active {
@@ -129,6 +161,7 @@
   font-size: 14px;
   text-align: center;
   background-color: var(--tg-theme-bg-color, #ffffff);
+  color: var(--tg-theme-text-color, #000000);
 }
 
 .slippageInfo {
@@ -141,7 +174,6 @@
   flex-direction: column;
   gap: 4px;
   color: var(--tg-theme-button-color, #2481cc);
-  font-size: 16px;
 }
 
 .bonusValue {
@@ -159,9 +191,45 @@
   font-size: 14px;
 }
 
+.priceInfo {
+  background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--tg-theme-bg-color, #ffffff);
+}
+
+.priceRow:last-child {
+  border-bottom: none;
+}
+
+.tonPrice {
+  font-size: 12px;
+  color: var(--tg-theme-hint-color, #999999);
+  display: block;
+  margin-top: 4px;
+}
+
+.positive {
+  color: #10b981;
+}
+
+.negative {
+  color: #ef4444;
+}
+
 .footer {
   margin-top: auto;
-  padding-top: 16px;
+  padding: 16px;
+  background-color: var(--tg-theme-bg-color, #ffffff);
+  border-top: 1px solid var(--tg-theme-secondary-bg-color, #f0f0f0);
 }
 
 .transactionInfo {
@@ -175,8 +243,10 @@
 }
 
 .error {
-  font-size: 14px;
   color: #ef4444;
+  text-align: center;
+  margin-bottom: 16px;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -188,7 +258,7 @@
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
 }
 
 .actionButton:disabled {
@@ -208,4 +278,41 @@
 
 .warningButton {
   background-color: var(--tg-theme-button-color, #2481cc);
+  color: var(--tg-theme-button-text-color, #ffffff);
+}
+
+/* Mobile optimization */
+@media (max-width: 640px) {
+  .amountInput {
+    font-size: 36px;
+  }
+
+  .slippageOptions {
+    gap: 4px;
+  }
+
+  .slippageOption {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .footer {
+    padding: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .actionButton {
+    padding: 14px;
+  }
+}
+
+/* Dark theme optimization */
+@media (prefers-color-scheme: dark) {
+  .slippageOption {
+    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  }
+
+  .slippageInput {
+    background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  }
 }
