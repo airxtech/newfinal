@@ -9,6 +9,7 @@ import { TradeModal } from '@/app/components/token/TradeModal'
 import styles from './page.module.css'
 import { PriceChart } from '@/app/components/token/PriceChart'
 import { Spinner } from '@/app/components/ui/spinner'
+import { showErrorPopup } from '@/lib/services/popupService'
 import io from 'socket.io-client'
 
 interface TokenData {
@@ -118,13 +119,9 @@ export default function TokenPage() {
   const lastTransactionRef = useRef<HTMLDivElement | null>(null)
 
   const handleError = (error: any, type: keyof ErrorStates) => {
-    const message = error?.response?.data?.message || error.message || 'An error occurred'
-    setErrors(prev => ({ ...prev, [type]: message }))
-    window.Telegram.WebApp.showPopup({
-      title: 'Error',
-      message,
-      buttons: [{ type: 'close' }]
-    })
+    const message = error?.message || 'An error occurred';
+    setErrors(prev => ({ ...prev, [type]: message }));
+    showErrorPopup(message);
   }
 
   const retryRequest = async <T,>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> => {
@@ -348,13 +345,14 @@ export default function TokenPage() {
     setShowTradeModal(true)
   }
 
-  const formatValue = (value: number) => {
+  const formatValue = (value: number | undefined) => {
+    if (typeof value !== 'number') return '$0.00';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 6
-    }).format(value)
+    }).format(value);
   }
 
   const formatAddress = (address: string) => {
@@ -430,17 +428,17 @@ export default function TokenPage() {
       <div className={styles.metrics}>
         <div className={styles.metricCard}>
           <Users size={20} />
-          <span className={styles.metricValue}>{token.holdersCount}</span>
+          <span className={styles.metricValue}>{typeof token.holdersCount === 'number' ? token.holdersCount.toLocaleString() : '0'}</span>
           <span className={styles.metricLabel}>Holders</span>
         </div>
         <div className={styles.metricCard}>
           <LineChart size={20} />
-          <span className={styles.metricValue}>{token.transactionCount}</span>
+          <span className={styles.metricValue}>{typeof token.transactionCount === 'number' ? token.transactionCount.toLocaleString() : '0'}</span>
           <span className={styles.metricLabel}>Trades</span>
         </div>
         <div className={styles.metricCard}>
           <Clock size={20} />
-          <span className={styles.metricValue}>{token.bondingCurve.toFixed(1)}%</span>
+          <span className={styles.metricValue}>{typeof token.bondingCurve === 'number' ? token.bondingCurve.toFixed(1) : '0'}%</span>
           <span className={styles.metricLabel}>Bonding</span>
         </div>
       </div>
@@ -514,7 +512,7 @@ export default function TokenPage() {
             <div className={styles.tokenMetrics}>
               <div className={styles.metricRow}>
                 <span>Total Supply</span>
-                <span>{token.totalSupply.toLocaleString()} {token.ticker}</span>
+                <span>{typeof token.totalSupply === 'number' ? token.totalSupply.toLocaleString() : '0'} {token.ticker}</span>
               </div>
               <div className={styles.metricRow}>
                 <span>Current Step</span>
@@ -522,7 +520,7 @@ export default function TokenPage() {
               </div>
               <div className={styles.metricRow}>
                 <span>Tokens in Market</span>
-                <span>{token.currentTokensSold.toLocaleString()} {token.ticker}</span>
+                <span>{typeof token.currentTokensSold === 'number' ? token.currentTokensSold.toLocaleString() : '0'} {token.ticker}</span>
               </div>
             </div>
           </div>
