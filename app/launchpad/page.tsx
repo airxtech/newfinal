@@ -12,7 +12,7 @@ interface Token {
   name: string
   ticker: string
   logo: string
-  imageUrl?: string
+  imageUrl: string
   transactions: number
   daysListed: number
   priceChange: number
@@ -72,31 +72,37 @@ export default function LaunchpadPage() {
   // Token rotation for 'all' view
   useEffect(() => {
     if (activeView === 'all' && tokens.length > 0) {
-      // Set initial highlight if not set
+      // Set initial highlight
       if (!highlightedToken) {
         setHighlightedToken(tokens[0].id)
       }
 
       const rotationInterval = setInterval(() => {
-        setHighlightedToken(currentHighlight => {
-          const currentIndex = tokens.findIndex(t => t.id === currentHighlight)
-          const nextIndex = (currentIndex + 1) % tokens.length
-          return tokens[nextIndex].id
-        })
-      }, 5000)
+        setTokens(currentTokens => {
+          const newTokens = [...currentTokens];
+          const firstToken = newTokens.shift();
+          if (firstToken) {
+            newTokens.push(firstToken);
+          }
+          return newTokens;
+        });
+        
+        // Update highlighted token to be the new first token
+        setHighlightedToken(tokens[1]?.id || tokens[0]?.id);
+      }, 3000);
 
-      return () => clearInterval(rotationInterval)
+      return () => clearInterval(rotationInterval);
     }
-  }, [activeView, tokens])
+  }, [activeView, tokens.length]);
 
-  // Auto-refresh for hot and all views
+  // Auto-refresh data
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null
 
     if (activeView === 'hot' || activeView === 'all') {
       intervalId = setInterval(() => {
         fetchTokens(true)
-      }, activeView === 'hot' ? 60000 : 5000)
+      }, activeView === 'hot' ? 60000 : 10000)
     }
 
     return () => {
@@ -132,9 +138,15 @@ export default function LaunchpadPage() {
       <div className={styles.header}>
         <div className={styles.logo}>
           {token.imageUrl ? (
-            <img src={token.imageUrl} alt={token.name} />
+            <img 
+              src={token.imageUrl} 
+              alt={token.name} 
+              className={styles.tokenImage}
+            />
           ) : (
-            token.logo || '⭐️'
+            <span className={styles.fallbackLogo}>
+              {token.logo || '⭐️'}
+            </span>
           )}
         </div>
         <div className={styles.nameContainer}>
