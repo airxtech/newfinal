@@ -1,7 +1,7 @@
 // app/launchpad/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from './page.module.css'
 import { Plus } from 'lucide-react'
@@ -26,65 +26,65 @@ export default function LaunchpadPage() {
   const [tokens, setTokens] = useState<Token[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [highlightedToken, setHighlightedToken] = useState<string | null>(null)
+  const [lastFetchTime, setLastFetchTime] = useState<number>(Date.now())
 
-  useEffect(() => {
-    fetchTokens()
-    // For Hot view and All view updates
-    const interval = setInterval(() => {
-      if (activeView === 'hot' || activeView === 'all') {
-        fetchTokens()
-      }
-    }, activeView === 'hot' ? 60000 : 5000) // 1 min for hot, 5s for all
-
-    return () => clearInterval(interval)
-  }, [activeView])
-
-  const fetchTokens = async () => {
+  const fetchTokens = useCallback(async (silent = false) => {
     try {
-      setError(null)
-      console.log('Fetching tokens for view:', activeView)
+      if (!silent) setError(null)
       const query = activeView !== 'all' ? `?view=${activeView}` : ''
-      console.log('Making request to:', `/api/tokens${query}`)
-
-      const response = await fetch(`/api/tokens${query}`)
-      console.log('Token API response status:', response.status)
+      
+      const response = await fetch(`/api/tokens${query}`, {
+        // Add cache control headers to prevent caching
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      })
       
       if (!response.ok) {
         throw new Error(`Failed to fetch tokens: ${response.status}`)
       }
       
       const data = await response.json()
-      console.log('Received tokens data:', data)
 
       if (!Array.isArray(data)) {
-        console.error('Received non-array data:', data)
         throw new Error('Invalid data format received from API')
       }
       
       setTokens(data)
-      
-      if (activeView === 'all' && data.length > 0) {
-        setHighlightedToken(data[0].id)
-        // Rotate tokens every 5 seconds
-        setTimeout(() => {
-          setTokens(prev => {
-            const newTokens = [...prev]
-            const first = newTokens.shift()
-            if (first) {
-              newTokens.push(first)
-            }
-            return newTokens
-          })
-        }, 5000)
-      }
+      setLastFetchTime(Date.now())
     } catch (error) {
       console.error('Error fetching tokens:', error)
-      setError(error instanceof Error ? error.message : 'Failed to fetch tokens')
+      if (!silent) {
+        setError(error instanceof Error ? error.message : 'Failed to fetch tokens')
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
-  }
+  }, [activeView])
+
+  // Initial fetch
+  useEffect(() => {
+    fetchTokens()
+  }, [fetchTokens, activeView])
+
+  // Set up auto-refresh for token data only
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
+    if (activeView === 'hot' || activeView === 'all') {
+      intervalId = setInterval(() => {
+        // Silent refresh - don't show loading/error states
+        fetchTokens(true)
+      }, activeView === 'hot' ? 60000 : 5000)
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
+  }, [activeView, fetchTokens])
 
   const formatValue = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -102,12 +102,80 @@ export default function LaunchpadPage() {
     return `${days} days`
   }
 
-  if (loading) {
-    return <div className={styles.loading}>Loading tokens...</div>
-  }
+  // Render functions
+  const renderTokenCard = (token: Token) => (
+    <div 
+      key={token.id} 
+      className={styles.tokenCard}
+      onClick={() => router.push(`/launchpad/tokens/${token.id}`)}
+    >
+      <div className={styles.header}>
+        <div className={styles.logo}>{token.logo || '🪙'}</div>
+        <div className={styles.nameContainer}>
+          <h3>{token.name}</h3>
+          <span className={styles.ticker}>{token.ticker}</span>
+        </div>
+      </div>
 
-  if (error) {
-    return <div className={styles.error}>Error: {error}</div>
+      <div className={styles.stats}>
+        <div className={styles.stat}>
+          <span className={styles.label}>Transactions</span>
+          <span className={styles.value}>{token.transactions || 0}</span>
+        </div>
+        <div className={styles.stat}>
+          <span className={styles.label}>Listed</span>
+          <span className={styles.value}>
+            {formatTime(token.daysListed || 0)}
+          </span>
+        </div>
+      </div>
+
+      <div className={styles.priceChange}>
+        <span 
+          className={`${styles.change} ${(token.priceChange || 0) >= 0 ? styles.positive : styles.negative}`}
+        >
+          {(token.priceChange || 0) >= 0 ? '+' : ''}{token.priceChange || 0}%
+        </span>
+        <span className={styles.period}>6h</span>
+      </div>
+
+      <div className={styles.bondingCurve}>
+        <div className={styles.progressLabel}>
+          <span>Bonding Curve</span>
+          <span>{token.bondingProgress || 0}%</span>
+        </div>
+        <div className={styles.progressBar}>
+          <div 
+            className={styles.progress} 
+            style={{ width: `${token.bondingProgress || 0}%` }}
+          />
+        </div>
+      </div>
+
+      <div className={styles.marketCap}>
+        <span className={styles.label}>Market Cap</span>
+        <span className={styles.value}>{formatValue(token.marketCap || 0)}</span>
+      </div>
+    </div>
+  )
+
+  const renderTokenGrid = () => {
+    if (loading) return <div className={styles.loading}>Loading tokens...</div>
+    if (error) return <div className={styles.error}>{error}</div>
+    if (tokens.length === 0) {
+      return (
+        <div className={styles.noTokens}>
+          {activeView === 'my' 
+            ? "You don't have any tokens yet"
+            : "No tokens found"}
+        </div>
+      )
+    }
+    return (
+      <div className={styles.tokenGrid}>
+        {tokens.map(renderTokenCard)}
+      </div>
+    )
   }
 
   return (
@@ -187,74 +255,7 @@ export default function LaunchpadPage() {
           </button>
         </div>
 
-        <div className={styles.tokenGrid}>
-          {tokens.length === 0 ? (
-            <div className={styles.noTokens}>
-              {activeView === 'my' 
-                ? "You don't have any tokens yet"
-                : "No tokens found"}
-            </div>
-          ) : (
-            tokens.map(token => {
-              console.log('Rendering token:', token.id)
-              return (
-                <div 
-                  key={token.id} 
-                  className={styles.tokenCard}
-                  onClick={() => router.push(`/launchpad/tokens/${token.id}`)}
-                >
-                  <div className={styles.header}>
-                    <div className={styles.logo}>{token.logo || '🪙'}</div>
-                    <div className={styles.nameContainer}>
-                      <h3>{token.name}</h3>
-                      <span className={styles.ticker}>{token.ticker}</span>
-                    </div>
-                  </div>
-
-                  <div className={styles.stats}>
-                    <div className={styles.stat}>
-                      <span className={styles.label}>Transactions</span>
-                      <span className={styles.value}>{token.transactions || 0}</span>
-                    </div>
-                    <div className={styles.stat}>
-                      <span className={styles.label}>Listed</span>
-                      <span className={styles.value}>
-                        {formatTime(token.daysListed || 0)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className={styles.priceChange}>
-                    <span 
-                      className={`${styles.change} ${(token.priceChange || 0) >= 0 ? styles.positive : styles.negative}`}
-                    >
-                      {(token.priceChange || 0) >= 0 ? '+' : ''}{token.priceChange || 0}%
-                    </span>
-                    <span className={styles.period}>6h</span>
-                  </div>
-
-                  <div className={styles.bondingCurve}>
-                    <div className={styles.progressLabel}>
-                      <span>Bonding Curve</span>
-                      <span>{token.bondingProgress || 0}%</span>
-                    </div>
-                    <div className={styles.progressBar}>
-                      <div 
-                        className={styles.progress} 
-                        style={{ width: `${token.bondingProgress || 0}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className={styles.marketCap}>
-                    <span className={styles.label}>Market Cap</span>
-                    <span className={styles.value}>{formatValue(token.marketCap || 0)}</span>
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
+        {renderTokenGrid()}
       </section>
     </div>
   )
