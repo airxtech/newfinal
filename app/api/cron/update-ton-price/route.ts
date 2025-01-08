@@ -1,7 +1,7 @@
 // app/api/cron/update-ton-price/route.ts
 import { NextResponse } from 'next/server';
 import { TonPriceService } from '@/lib/services/tonPriceService';
-import { pusher } from '@/lib/services/pusherService';
+import { serverPusher } from '@/lib/services/pusherService';
 import { headers } from 'next/headers';
 
 export async function GET(request: Request) {
@@ -21,8 +21,7 @@ export async function GET(request: Request) {
 
     // After successfully updating the price, broadcast it via Pusher
     if (price) {
-      // Broadcast to a general ton-price channel instead of token-specific
-      await pusher.trigger('private-ton-price', 'price-update', {
+      await serverPusher.trigger('private-ton-price', 'price-update', {
         price,
         timestamp: new Date().toISOString()
       });
