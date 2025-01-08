@@ -1,8 +1,9 @@
 // lib/services/tokenService.ts
 
 import { prisma } from '../prisma';
-import { Token, User, TransactionType } from '@prisma/client';
+import { TonPriceService } from './tonPriceService';
 import { v4 as uuidv4 } from 'uuid';
+import { TransactionType } from '@prisma/client';
 
 interface TokenCalculation {
   baseTokens: number;
@@ -29,7 +30,6 @@ export class TokenService {
     buyAmountUSD: number,
     userZoaBalance: number
   ): Promise<TokenCalculation> {
-    // Validate token exists and get current state
     const token = await prisma.token.findUnique({
       where: { id: tokenId },
       include: {
@@ -46,31 +46,18 @@ export class TokenService {
       throw new Error('Token is fully bonded');
     }
 
-    // Calculate transaction fee
     const fee = buyAmountUSD * this.TRANSACTION_FEE_PERCENTAGE;
     const totalPayment = buyAmountUSD + fee;
-
-    // Calculate base token amount
     const baseTokenValue = buyAmountUSD * this.BASE_TOKEN_PERCENTAGE;
-    
-    // Calculate bonus based on ZOA balance
     const maxBonusValue = baseTokenValue * this.MAX_BONUS_PERCENTAGE;
     const bonusTokenValue = Math.min(maxBonusValue, userZoaBalance);
-
-    // Calculate token amounts based on bonding curve
     const currentBondingValue = (token.bondingCurve / 100) * this.TARGET_BONDING_CURVE;
     const newBondingValue = currentBondingValue + baseTokenValue;
     const bondingProgress = (newBondingValue / this.TARGET_BONDING_CURVE) * 100;
-
-    // Calculate token price based on bonding curve
     const tokenPrice = this.calculateTokenPrice(bondingProgress);
-    
-    // Calculate actual tokens to be received
     const baseTokens = baseTokenValue / tokenPrice;
     const bonusTokens = bonusTokenValue / tokenPrice;
     const totalTokens = baseTokens + bonusTokens;
-
-    // Calculate profit and bonding curve contribution
     const bondingCurveContribution = baseTokenValue;
     const profit = buyAmountUSD - baseTokenValue + fee;
 
@@ -95,7 +82,7 @@ export class TokenService {
     netAmount: number;
     profit: number;
   }> {
-    const tokenData = await prisma.token.findUnique({
+    const token = await prisma.token.findUnique({
       where: { id: tokenId },
       include: {
         transactions: true,
@@ -103,23 +90,14 @@ export class TokenService {
       },
     });
 
-    if (!tokenData) {
+    if (!token) {
       throw new Error('Token not found');
     }
 
-    // Calculate token price based on current bonding curve
-    const tokenPrice = this.calculateTokenPrice(tokenData.bondingCurve);
-    
-    // Calculate gross TON amount
+    const tokenPrice = this.calculateTokenPrice(token.bondingCurve);
     const grossAmount = tokenAmount * tokenPrice;
-    
-    // Calculate fee
     const fee = grossAmount * this.TRANSACTION_FEE_PERCENTAGE;
-    
-    // Calculate net amount after fee
     const netAmount = grossAmount - fee;
-    
-    // Calculate platform profit
     const profit = fee;
 
     return {
@@ -130,38 +108,24 @@ export class TokenService {
     };
   }
 
-  private static calculateTokenPrice(bondingProgress: number): number {
-    const maxPrice = this.TARGET_MARKET_CAP / this.TOTAL_SUPPLY;
-    const minPrice = maxPrice / 10;
-    const exponent = bondingProgress / 100;
-    const price = minPrice * Math.pow(maxPrice / minPrice, exponent);
-    return price;
-  }
-
   static async executeBuyTransaction(
     userId: string,
     tokenId: string,
     calculation: TokenCalculation
   ) {
     return await prisma.$transaction(async (prisma) => {
-      const tokenData = await prisma.token.findUnique({
+      const token = await prisma.token.findUnique({
         where: { id: tokenId }
       });
 
-      if (!tokenData) {
+      if (!token) {
         throw new Error('Token not found');
       }
 
-      // Update token state
-      const updatedToken = await prisma.token.update({
-        where: { id: tokenId },
-        data: {
-          bondingCurve: { increment: (calculation.bondingCurveContribution / this.TARGET_BONDING_CURVE) * 100 },
-          marketCap: { increment: calculation.totalTokens * this.calculateTokenPrice(tokenData.bondingCurve) },
-        },
-      });
+      const tonUsdRate = await TonPriceService.getCurrentPrice();
+      const amountUsd = calculation.tonAmount * tonUsdRate;
+      const priceUsd = token.currentPrice * tonUsdRate;
 
-      // Create transaction record
       const transaction = await prisma.transaction.create({
         data: {
           id: uuidv4(),
@@ -169,12 +133,23 @@ export class TokenService {
           tokenId,
           type: TransactionType.BUY,
           amount: calculation.tonAmount,
+          amountUsd,
           tokenAmount: calculation.totalTokens,
-          price: this.calculateTokenPrice(updatedToken.bondingCurve),
+          price: token.currentPrice,
+          priceUsd,
+          tonUsdRate,
+          timestamp: new Date()
+        }
+      });
+
+      await prisma.token.update({
+        where: { id: tokenId },
+        data: {
+          bondingCurve: { increment: (calculation.bondingCurveContribution / this.TARGET_BONDING_CURVE) * 100 },
+          marketCap: { increment: calculation.totalTokens * token.currentPrice },
         },
       });
 
-      // Update or create user token balance
       await prisma.userToken.upsert({
         where: {
           userId_tokenId: {
@@ -193,7 +168,6 @@ export class TokenService {
         },
       });
 
-      // Deduct ZOA tokens if bonus tokens were given
       if (calculation.bonusTokens > 0) {
         await prisma.user.update({
           where: { id: userId },
@@ -214,7 +188,6 @@ export class TokenService {
     calculation: { tonAmount: number; fee: number; netAmount: number; profit: number }
   ) {
     return await prisma.$transaction(async (prisma) => {
-      // Verify user has enough tokens
       const userToken = await prisma.userToken.findUnique({
         where: {
           userId_tokenId: {
@@ -228,24 +201,18 @@ export class TokenService {
         throw new Error('Insufficient token balance');
       }
 
-      const tokenData = await prisma.token.findUnique({
+      const token = await prisma.token.findUnique({
         where: { id: tokenId }
       });
 
-      if (!tokenData) {
+      if (!token) {
         throw new Error('Token not found');
       }
 
-      // Update token state
-      const updatedToken = await prisma.token.update({
-        where: { id: tokenId },
-        data: {
-          bondingCurve: { decrement: (calculation.netAmount / this.TARGET_BONDING_CURVE) * 100 },
-          marketCap: { decrement: tokenAmount * this.calculateTokenPrice(tokenData.bondingCurve) },
-        },
-      });
+      const tonUsdRate = await TonPriceService.getCurrentPrice();
+      const amountUsd = calculation.tonAmount * tonUsdRate;
+      const priceUsd = token.currentPrice * tonUsdRate;
 
-      // Create transaction record
       const transaction = await prisma.transaction.create({
         data: {
           id: uuidv4(),
@@ -253,12 +220,23 @@ export class TokenService {
           tokenId,
           type: TransactionType.SELL,
           amount: calculation.tonAmount,
+          amountUsd,
           tokenAmount: tokenAmount,
-          price: this.calculateTokenPrice(updatedToken.bondingCurve),
+          price: token.currentPrice,
+          priceUsd,
+          tonUsdRate,
+          timestamp: new Date()
+        }
+      });
+
+      await prisma.token.update({
+        where: { id: tokenId },
+        data: {
+          bondingCurve: { decrement: (calculation.netAmount / this.TARGET_BONDING_CURVE) * 100 },
+          marketCap: { decrement: tokenAmount * token.currentPrice },
         },
       });
 
-      // Update user token balance
       await prisma.userToken.update({
         where: {
           userId_tokenId: {
@@ -273,5 +251,12 @@ export class TokenService {
 
       return transaction;
     });
+  }
+
+  private static calculateTokenPrice(bondingProgress: number): number {
+    const maxPrice = this.TARGET_MARKET_CAP / this.TOTAL_SUPPLY;
+    const minPrice = maxPrice / 10;
+    const exponent = bondingProgress / 100;
+    return minPrice * Math.pow(maxPrice / minPrice, exponent);
   }
 }

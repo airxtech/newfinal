@@ -91,19 +91,20 @@ model UserToken {
 }
 
 model Transaction {
-  id            String   @id @map("_id")
-  user          User     @relation(fields: [userId], references: [id])
-  userId        String
-  token         Token    @relation(fields: [tokenId], references: [id])
-  tokenId       String
-  type          TransactionType
-  amount        Float    // TON amount
-  amountUsd     Float    // USD value at transaction time
-  price         Float    // Token price in TON at transaction time
-  priceUsd      Float    // Token price in USD
-  tokenAmount   Float    // Token amount
-  timestamp     DateTime @default(now())
-  tonUsdRate    Float    // TON to USD rate at transaction time
+  id          String   @id @map("_id")
+  userId      String
+  tokenId     String
+  type        TransactionType
+  amount      Float    // TON amount
+  amountUsd   Float    // USD value at transaction time
+  tokenAmount Float    // Token amount
+  price       Float    // Token price in TON
+  priceUsd    Float    // Token price in USD
+  tonUsdRate  Float    // TON to USD rate at transaction time
+  timestamp   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id])
+  token       Token    @relation(fields: [tokenId], references: [id])
 
   @@index([tokenId, timestamp])
 }
