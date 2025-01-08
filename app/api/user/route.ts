@@ -4,108 +4,96 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(request: Request) {
   try {
-    // Get telegramId from URL params
-    const { searchParams } = new URL(request.url);
-    const telegramId = searchParams.get('telegramId');
+    const { searchParams } = new URL(request.url)
+    const telegramId = searchParams.get('telegramId')
     
-    console.log('Searching for telegramId:', telegramId);
-
     if (!telegramId) {
       return NextResponse.json(
         { error: 'Telegram ID is required' },
         { status: 400 }
-      );
+      )
     }
 
     const user = await prisma.user.findUnique({
       where: { 
         telegramId: Number(telegramId) 
+      },
+      select: {
+        id: true,
+        telegramId: true,
+        firstName: true,
+        lastName: true,
+        username: true,
+        zoaBalance: true,
+        tonBalance: true,
+        walletAddress: true,
+        lastConnected: true
       }
-    });
+    })
     
-    console.log('Found user:', user);
-
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
-      );
+      )
     }
 
-    return NextResponse.json(user);
+    return NextResponse.json(user)
   } catch (error: any) {
-    console.error('GET request error:', error);
+    console.error('GET request error:', error)
     return NextResponse.json(
       { error: 'Database query failed', details: error.message },
       { status: 500 }
-    );
+    )
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    console.log('Request body:', body);
-    
+    const body = await request.json()
     const { 
       telegramId, 
-      firstName, 
-      lastName, 
-      username, 
-      zoaBalance, 
-      scratchChances,
-      walletAddress,
-      tonBalance 
-    } = body;
+      tonBalance,
+      walletAddress 
+    } = body
 
-    // Validate required fields
     if (!telegramId) {
       return NextResponse.json(
         { error: 'Telegram ID is required' },
         { status: 400 }
-      );
+      )
     }
 
-    const user = await prisma.user.upsert({
+    const user = await prisma.user.update({
       where: { 
         telegramId: Number(telegramId) 
       },
-      update: { 
-        firstName,
-        lastName,
-        username,
-        zoaBalance: zoaBalance || undefined,
-        ...(scratchChances !== undefined && { scratchChances }),
+      data: {
+        ...(tonBalance !== undefined && { tonBalance }),
         ...(walletAddress && { 
           walletAddress,
           lastConnected: new Date() 
-        }),
-        ...(tonBalance !== undefined && { tonBalance })
+        })
       },
-      create: {
-        id: telegramId.toString(),
-        telegramId: Number(telegramId),
-        firstName: firstName || 'Anonymous',
-        lastName: lastName || '',
-        username: username || '',
-        zoaBalance: zoaBalance || 0,
-        scratchChances: scratchChances || 3,
-        referralCode: `ZOA${telegramId}${Date.now().toString(36)}`.toUpperCase(),
-        ...(walletAddress && { 
-          walletAddress,
-          lastConnected: new Date() 
-        }),
-        ...(tonBalance !== undefined && { tonBalance })
+      select: {
+        id: true,
+        telegramId: true,
+        firstName: true,
+        lastName: true,
+        username: true,
+        zoaBalance: true,
+        tonBalance: true,
+        walletAddress: true,
+        lastConnected: true
       }
-    });
+    })
     
-    console.log('User saved/updated:', user);
-    return NextResponse.json(user);
+    return NextResponse.json(user)
   } catch (error: any) {
-    console.error('POST request error:', error);
+    console.error('POST request error:', error)
     return NextResponse.json(
       { error: 'Database operation failed', details: error.message },
       { status: 500 }
-    );
+    )
   }
 }

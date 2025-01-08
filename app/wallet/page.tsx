@@ -5,49 +5,68 @@ import { useState, useEffect, useCallback } from 'react'
 import { useTonConnectUI } from '@tonconnect/ui-react'
 import { toUserFriendlyAddress } from '@tonconnect/sdk'
 import { WalletButton } from '../components/shared/WalletButton'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, ExternalLink } from 'lucide-react'
 import { Spinner } from '../components/ui/spinner'
 import styles from './page.module.css'
 
+// Types based on Prisma schema
 interface TonWalletAccount {
-  address: string;
-  chain: number;
-  walletStateInit?: string;
-  publicKey?: string;
+  address: string
+  chain: number
+  walletStateInit?: string
+  publicKey?: string
 }
 
 interface TonWallet {
-  account: TonWalletAccount;
-  connectTime?: number;
+  account: TonWalletAccount
+  connectTime?: number
   device?: {
-    platform: string;
-    appName: string;
-    appVersion?: string;
-  };
+    platform: string
+    appName: string
+    appVersion?: string
+  }
 }
 
 interface Token {
-  id: string;
-  name: string;
-  ticker: string;
-  logo: string;
-  balance: number;
-  value: number;
-  price: number;
-  isListed: boolean;
-  contractAddress?: string;
+  id: string
+  name: string
+  ticker: string
+  imageUrl: string | null
+  description: string
+  totalSupply: number
+  currentPrice: number
+  marketCap: number
+  bondingCurve: number
+  isListed: boolean
+  contractAddress: string | null
+  createdAt: Date
+  creatorId: string
+}
+
+interface UserToken {
+  id: string
+  userId: string
+  tokenId: string
+  balance: number
+  token: Token
 }
 
 interface User {
-  id: string;
-  telegramId: number;
-  zoaBalance: number;
+  id: string
+  telegramId: number
+  firstName: string
+  lastName: string | null
+  username: string | null
+  zoaBalance: number
+  tonBalance: number | null
+  walletAddress: string | null
+  lastConnected: Date | null
 }
 
 export default function WalletPage() {
   const [tonConnectUI] = useTonConnectUI()
   const [user, setUser] = useState<User | null>(null)
-  const [portfolio, setPortfolio] = useState<Token[]>([])
+  const [userTokens, setUserTokens] = useState<UserToken[]>([])
   const [totalValue, setTotalValue] = useState<number>(0)
   const [tonBalance, setTonBalance] = useState<string>('0.00')
   const [loading, setLoading] = useState<boolean>(true)
@@ -61,13 +80,13 @@ export default function WalletPage() {
     try {
       const webApp = window.Telegram.WebApp
       if (!webApp?.initDataUnsafe?.user?.id) {
-        console.log('No user ID found in WebApp')
+        console.error('No user ID found in WebApp')
         return
       }
 
       // Fetch user data
       const response = await fetch(`/api/user?telegramId=${webApp.initDataUnsafe.user.id}`)
-      const userData = await response.json()
+      const userData: User = await response.json()
       
       if (response.ok) {
         setUser(userData)
@@ -75,26 +94,14 @@ export default function WalletPage() {
         // Fetch user's tokens
         const tokensResponse = await fetch(`/api/tokens/user/${userData.telegramId}`)
         if (tokensResponse.ok) {
-          const tokensData = await tokensResponse.json()
-          
-          // Add ZOA token at the beginning
-          const portfolioData: Token[] = [{
-            id: 'zoa',
-            name: 'ZOA Coin',
-            ticker: 'ZOA',
-            logo: '💎',
-            balance: userData.zoaBalance,
-            value: userData.zoaBalance, // ZOA has fixed $1 value
-            price: 1,
-            isListed: true
-          }]
+          const tokensData: UserToken[] = await tokensResponse.json()
+          setUserTokens(tokensData)
 
-          // Sort other tokens by value (descending) and add them after ZOA
-          const sortedTokens = tokensData.sort((a: Token, b: Token) => b.value - a.value)
-          portfolioData.push(...sortedTokens)
+          // Calculate total portfolio value including ZOA
+          const totalPortfolioValue = tokensData.reduce((acc, userToken) => {
+            return acc + (userToken.balance * userToken.token.currentPrice)
+          }, userData.zoaBalance) // ZOA is worth $1 per token
 
-          setPortfolio(portfolioData)
-          const totalPortfolioValue = portfolioData.reduce((acc: number, token: Token) => acc + token.value, 0)
           setTotalValue(totalPortfolioValue)
         }
       }
@@ -214,38 +221,81 @@ export default function WalletPage() {
       <section className={styles.portfolio}>
         <h2>Token Portfolio</h2>
         <div className={styles.tokenList}>
-          {portfolio.length === 0 ? (
-            <div className={styles.empty}>No tokens in portfolio</div>
+          {!user ? (
+            <div className={styles.empty}>Failed to load user data</div>
           ) : (
-            portfolio.map((token: Token) => (
-              <div key={token.id} className={styles.tokenCard}>
+            <>
+              {/* ZOA Token Card */}
+              <div className={styles.tokenCard}>
                 <div className={styles.tokenInfo}>
-                  <div className={styles.tokenLogo}>{token.logo}</div>
+                  <div className={styles.tokenLogo}>💎</div>
                   <div className={styles.tokenDetails}>
-                    <h3>{token.name}</h3>
-                    <span className={styles.ticker}>{token.ticker}</span>
+                    <h3>ZOA Coin</h3>
+                    <span className={styles.ticker}>ZOA</span>
                   </div>
                 </div>
-
                 <div className={styles.tokenBalance}>
                   <div className={styles.amount}>
-                    {token.balance.toFixed(4)} {token.ticker}
+                    {user.zoaBalance.toFixed(4)} ZOA
                   </div>
                   <div className={styles.value}>
-                    {formatValue(token.value)}
+                    {formatValue(user.zoaBalance)}
                   </div>
                 </div>
-
-                {token.isListed && token.contractAddress && (
-                  <button 
-                    className={styles.tradeButton}
-                    onClick={() => goToStonFi(token.contractAddress!)}
-                  >
-                    Trade on STON.fi
-                  </button>
-                )}
               </div>
-            ))
+
+              {/* Other Tokens */}
+              {userTokens.length === 0 ? (
+                <div className={styles.empty}>No other tokens in portfolio</div>
+              ) : (
+                userTokens.map((userToken) => (
+                  <div key={userToken.id} className={styles.tokenCard}>
+                    <div className={styles.tokenInfo}>
+                      <div className={styles.tokenLogo}>
+                        {userToken.token.imageUrl ? (
+                          <img
+                            src={userToken.token.imageUrl}
+                            alt={userToken.token.name}
+                            className={styles.tokenImage}
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.style.display = 'none'
+                              const parent = target.parentElement
+                              if (parent) {
+                                parent.textContent = '🪙'
+                              }
+                            }}
+                          />
+                        ) : '🪙'}
+                      </div>
+                      <div className={styles.tokenDetails}>
+                        <h3>{userToken.token.name}</h3>
+                        <span className={styles.ticker}>{userToken.token.ticker}</span>
+                      </div>
+                    </div>
+
+                    <div className={styles.tokenBalance}>
+                      <div className={styles.amount}>
+                        {userToken.balance.toFixed(4)} {userToken.token.ticker}
+                      </div>
+                      <div className={styles.value}>
+                        {formatValue(userToken.balance * userToken.token.currentPrice)}
+                      </div>
+                    </div>
+
+                    {userToken.token.isListed && userToken.token.contractAddress && (
+                      <button 
+                        className={styles.tradeButton}
+                        onClick={() => goToStonFi(userToken.token.contractAddress!)}
+                      >
+                        <span>STON.fi</span>
+                        <ExternalLink size={16} />
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </>
           )}
         </div>
       </section>
