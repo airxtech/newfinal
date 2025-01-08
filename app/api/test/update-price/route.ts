@@ -10,11 +10,19 @@ export async function GET() {
       throw new Error('TONCENTER_API_KEY not configured');
     }
     
-    const response = await fetch('https://toncenter.com/api/v2/getTokenData', {
+    // Using the correct endpoint for TON price
+    const response = await fetch('https://toncenter.com/api/v2/jrpc', {
+      method: 'POST',
       headers: {
         'X-API-Key': process.env.TONCENTER_API_KEY,
-        'Accept': 'application/json'
-      }
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        "id": "1",
+        "jsonrpc": "2.0",
+        "method": "getTokenData",
+        "params": []
+      })
     });
 
     console.log('API Response status:', response.status); // Debug log
@@ -28,11 +36,12 @@ export async function GET() {
     const data = await response.json();
     console.log('Received data:', data); // Debug log
 
-    if (!data.price_usd && data.price_usd !== 0) {
+    // Check if we have a valid result
+    if (!data.result?.price_usd && data.result?.price_usd !== 0) {
       throw new Error('No price data in response');
     }
 
-    const price = data.price_usd;
+    const price = data.result.price_usd;
 
     const result = await prisma.tonPrice.upsert({
       where: { id: 'current' },
