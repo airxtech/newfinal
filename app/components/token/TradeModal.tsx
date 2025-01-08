@@ -109,7 +109,10 @@ export const TradeModal: React.FC<TradeModalProps> = ({
 
   const handlePercentageClick = async (percentage: number) => {
     if (type === 'buy') {
-      const maxTon = userBalance.ton * (percentage / 100);
+      let maxTon = userBalance.ton * (percentage / 100);
+      if (percentage === 100) {
+        maxTon = userBalance.ton * (99 / 100);
+      }
       setAmount(maxTon.toString());
       await calculateTokenAmount(maxTon);
     } else {
