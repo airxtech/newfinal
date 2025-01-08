@@ -7,6 +7,7 @@ import { ArrowLeft, ExternalLink, Users, Clock, LineChart, RefreshCw } from 'luc
 import { useTonConnectUI } from '@tonconnect/ui-react'
 import { TradeModal } from '@/app/components/token/TradeModal'
 import { useTokenUpdates } from '@/app/hooks/useTokenUpdates'
+import { Transaction } from '@/types/transaction'
 import styles from './page.module.css'
 import { PriceChart } from '@/app/components/token/PriceChart'
 import { Spinner } from '@/app/components/ui/spinner'
@@ -36,20 +37,6 @@ interface TokenData {
   }
   holdersCount: number
   transactionCount: number
-}
-
-interface Transaction {
-  id: string
-  type: 'BUY' | 'SELL'
-  amount: number
-  tokenAmount: number
-  price: number
-  timestamp: Date
-  address: string
-  user: {
-    username?: string
-    firstName: string
-  }
 }
 
 interface Holder {

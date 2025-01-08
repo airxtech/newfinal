@@ -1,25 +1,13 @@
 // app/hooks/useTokenUpdates.ts
 import { useEffect } from 'react';
 import { TonPriceService } from '@/lib/services/tonPriceService';
+import { Transaction } from '@/types/transaction';  // Import shared type
 
 interface UseTokenUpdatesProps {
   tokenId: string;
   onPriceUpdate: (price: number) => void;
   onNewTransaction?: (transaction: Transaction) => void;
   onTokenUpdate?: (data: TokenData) => void;
-}
-
-interface Transaction {
-  id: string;
-  type: 'BUY' | 'SELL';
-  amount: number;
-  tokenAmount: number;
-  price: number;
-  timestamp: Date;
-  user?: {
-    username?: string;
-    firstName: string;
-  };
 }
 
 interface TokenData {
