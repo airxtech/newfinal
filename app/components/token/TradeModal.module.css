@@ -163,6 +163,13 @@
   color: var(--tg-theme-text-color, #000000);
 }
 
+.customSlippageInput {
+  outline: 2px solid #ccc; /* Permanent outline */
+  text-align: right; /* Right align text */
+  padding: 5px; /* Add some padding for better appearance */
+  border-radius: 4px; /* Optional: Add border radius for rounded corners */
+}
+
 .slippageInfo {
   font-size: 14px;
   color: var(--tg-theme-hint-color, #999999);

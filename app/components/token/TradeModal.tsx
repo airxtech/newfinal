@@ -279,7 +279,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({
         
         {showSlippageSettings && (
           <div className={styles.slippageOptions}>
-            {[0.5, 1, 2, 3].map((value) => (
+            {[0.5, 1, 2, 5].map((value) => (
               <button
                 key={value}
                 onClick={() => setSlippage(value)}
@@ -294,7 +294,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({
               type="number"
               value={slippage}
               onChange={(e) => setSlippage(Number(e.target.value))}
-              className={styles.slippageInput}
+              className={`${styles.slippageInput} ${styles.customSlippageInput}`}
               placeholder="Custom"
             />
           </div>
