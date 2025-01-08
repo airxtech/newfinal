@@ -4,13 +4,19 @@
 import './globals.css'
 import { TonConnectUIProvider } from '@tonconnect/ui-react'
 import AppLayout from './components/layout/AppLayout'
-import React from 'react'
+import React, { useEffect } from 'react'
+import { startPriceUpdater, stopPriceUpdater } from './lib/priceUpdater'
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  useEffect(() => {
+    startPriceUpdater();
+    return () => stopPriceUpdater();
+  }, []);
+
   return (
     <html lang="en">
       <head>
@@ -36,7 +42,7 @@ export default function RootLayout({
             ]
           }}
           actionsConfiguration={{
-            twaReturnUrl: `https://t.me/${process.env.BOT_USERNAME}/start`  // Replace with your bot's username
+            twaReturnUrl: `https://t.me/${process.env.BOT_USERNAME}/start`
           }}
         >
           <AppLayout>{children}</AppLayout>
