@@ -15,27 +15,27 @@ export function useTokenUpdates({
   onNewTransaction,
   onTokenUpdate,
 }: UseTokenUpdatesProps) {
-  useEffect(() => {
-    // Subscribe to token-specific channel
-    const channel = pusherClient.subscribe(`token-${tokenId}`);
-
-    // Listen for price updates
-    channel.bind('price_update', (data: { price: number }) => {
-      onPriceUpdate(data.price);
-    });
-
-    // Listen for new transactions
-    channel.bind('new_transaction', (transaction: any) => {
-      onNewTransaction(transaction);
-    });
-
-    // Listen for token updates
-    channel.bind('token_update', (data: any) => {
-      onTokenUpdate(data);
-    });
+    useEffect(() => {
+        // Subscribe to general TON price updates
+        const priceChannel = pusherClient.subscribe('private-ton-price');
+        // Subscribe to token-specific updates
+        const tokenChannel = pusherClient.subscribe(`private-token-${tokenId}`);
+      
+        priceChannel.bind('price-update', (data: { price: number }) => {
+          onPriceUpdate(data.price);
+        });
+      
+        tokenChannel.bind('new_transaction', (transaction: any) => {
+          onNewTransaction(transaction);
+        });
+      
+        tokenChannel.bind('token_update', (data: any) => {
+          onTokenUpdate(data);
+        });
 
     return () => {
-      pusherClient.unsubscribe(`token-${tokenId}`);
+        pusherClient.unsubscribe('private-ton-price');
+        pusherClient.unsubscribe(`private-token-${tokenId}`);
     };
   }, [tokenId, onPriceUpdate, onNewTransaction, onTokenUpdate]);
 }

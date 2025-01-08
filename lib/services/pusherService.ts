@@ -2,19 +2,23 @@
 import Pusher from 'pusher';
 import PusherClient from 'pusher-js';
 
-// Server-side Pusher instance
 export const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID!,
-  key: process.env.NEXT_PUBLIC_PUSHER_KEY!,
+  key: process.env.PUSHER_KEY!,
   secret: process.env.PUSHER_SECRET!,
-  cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+  cluster: process.env.PUSHER_CLUSTER!,
   useTLS: true,
 });
 
-// Client-side Pusher instance
 export const pusherClient = new PusherClient(
-  process.env.NEXT_PUBLIC_PUSHER_KEY!,
+  process.env.PUSHER_KEY!, // This is still needed client-side
   {
     cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    authEndpoint: '/api/pusher/auth',
+    auth: {
+      headers: {
+        'X-Telegram-WebApp-Data': window.Telegram?.WebApp?.initData || ''
+      }
+    }
   }
 );
