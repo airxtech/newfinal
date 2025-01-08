@@ -98,9 +98,14 @@ model Transaction {
   tokenId       String
   type          TransactionType
   amount        Float    // TON amount
+  amountUsd     Float    // USD value at transaction time
+  price         Float    // Token price in TON at transaction time
+  priceUsd      Float    // Token price in USD
   tokenAmount   Float    // Token amount
-  price         Float    // Token price at transaction time
   timestamp     DateTime @default(now())
+  tonUsdRate    Float    // TON to USD rate at transaction time
+
+  @@index([tokenId, timestamp])
 }
 
 model Task {

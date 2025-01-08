@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Settings, ArrowLeft, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import styles from './TradeModal.module.css';
+import { TonPriceService } from '@/lib/services/tonPriceService';
 
 interface TradeModalProps {
   isOpen: boolean;
@@ -51,6 +52,14 @@ export const TradeModal: React.FC<TradeModalProps> = ({
       }
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    const updateTonPrice = async () => {
+      const price = await TonPriceService.getCurrentPrice();
+      setTonPrice(price);
+    };
+    updateTonPrice();
+  }, []);
 
   const fetchTonPrice = async () => {
     try {
