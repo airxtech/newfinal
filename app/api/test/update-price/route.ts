@@ -6,26 +6,11 @@ export async function GET() {
   try {
     console.log('Manual price update triggered');
     
-    if (!process.env.TONCENTER_API_KEY) {
-      throw new Error('TONCENTER_API_KEY not configured');
-    }
-    
-    // Using the correct endpoint for TON price
-    const response = await fetch('https://toncenter.com/api/v2/jrpc', {
-      method: 'POST',
-      headers: {
-        'X-API-Key': process.env.TONCENTER_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        "id": "1",
-        "jsonrpc": "2.0",
-        "method": "getTokenData",
-        "params": []
-      })
-    });
+    const response = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd'
+    );
 
-    console.log('API Response status:', response.status); // Debug log
+    console.log('API Response status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -34,14 +19,14 @@ export async function GET() {
     }
     
     const data = await response.json();
-    console.log('Received data:', data); // Debug log
+    console.log('Received data:', data);
 
-    // Check if we have a valid result
-    if (!data.result?.price_usd && data.result?.price_usd !== 0) {
+    // CoinGecko returns price in this format: { "the-open-network": { "usd": 2.34 } }
+    const price = data['the-open-network'].usd;
+
+    if (!price && price !== 0) {
       throw new Error('No price data in response');
     }
-
-    const price = data.result.price_usd;
 
     const result = await prisma.tonPrice.upsert({
       where: { id: 'current' },
