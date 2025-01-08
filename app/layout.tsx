@@ -4,27 +4,13 @@
 import './globals.css'
 import { TonConnectUIProvider } from '@tonconnect/ui-react'
 import AppLayout from './components/layout/AppLayout'
-import React, { useEffect } from 'react'
-import { TonPriceService } from '@/lib/services/tonPriceService'
+import React from 'react'
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  useEffect(() => {
-    // Initial price update
-    TonPriceService.updatePrice();
-
-    // Set up periodic updates (every 15 minutes)
-    const updateInterval = setInterval(() => {
-      TonPriceService.updatePrice();
-    }, 15 * 60 * 1000);
-
-    // Cleanup interval on unmount
-    return () => clearInterval(updateInterval);
-  }, []);
-
   return (
     <html lang="en">
       <head>

@@ -2,43 +2,66 @@
 import { prisma } from '../prisma';
 
 export class TonPriceService {
-  static async updatePrice(): Promise<number> {
-    try {
-      const response = await fetch(
-        'https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd'
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch TON price');
-      }
-
-      const data = await response.json();
-      const price = data['the-open-network'].usd;
-
-      // Update price in database
-      await prisma.tonPrice.upsert({
-        where: { id: 'current' },
-        update: { price, timestamp: new Date() },
-        create: { id: 'current', price, timestamp: new Date() }
-      });
-
-      return price;
-    } catch (error) {
-      console.error('Error updating TON price:', error);
-      throw error;
-    }
-  }
+  // Maximum age of cached price in milliseconds (15 minutes)
+  private static MAX_CACHE_AGE = 15 * 60 * 1000;
 
   static async getCurrentPrice(): Promise<number> {
     try {
-      // Always attempt to get fresh price first
-      return await this.updatePrice();
-    } catch (error) {
-      // Fallback to last stored price if update fails
-      const lastPrice = await prisma.tonPrice.findUnique({
+      // First, try to get the stored price
+      const storedPrice = await prisma.tonPrice.findUnique({
         where: { id: 'current' }
       });
-      return lastPrice?.price || 0;
+
+      const now = new Date();
+      const priceAge = storedPrice 
+        ? now.getTime() - storedPrice.timestamp.getTime() 
+        : Infinity;
+
+      // If price is too old or doesn't exist, fetch new price
+      if (!storedPrice || priceAge > this.MAX_CACHE_AGE) {
+        const response = await fetch(
+          'https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd'
+        );
+
+        if (!response.ok) {
+          // If we have a stored price, use it even if old
+          if (storedPrice) return storedPrice.price;
+          throw new Error('Failed to fetch TON price');
+        }
+
+        const data = await response.json();
+        const newPrice = data['the-open-network'].usd;
+
+        // Update stored price
+        await prisma.tonPrice.upsert({
+          where: { id: 'current' },
+          update: {
+            price: newPrice,
+            timestamp: now
+          },
+          create: {
+            id: 'current',
+            price: newPrice,
+            timestamp: now
+          }
+        });
+
+        return newPrice;
+      }
+
+      // If stored price is fresh enough, use it
+      return storedPrice.price;
+
+    } catch (error) {
+      // If any error occurs and we have a stored price, use it
+      const fallbackPrice = await prisma.tonPrice.findUnique({
+        where: { id: 'current' }
+      });
+      
+      if (fallbackPrice) return fallbackPrice.price;
+      
+      // If all else fails, throw error
+      throw error;
     }
   }
 }
