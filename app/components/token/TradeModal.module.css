@@ -168,6 +168,7 @@
   text-align: right; /* Right align text */
   padding: 5px; /* Add some padding for better appearance */
   border-radius: 4px; /* Optional: Add border radius for rounded corners */
+  margin-left: auto; /* Move to the right corner */
 }
 
 .slippageInfo {
