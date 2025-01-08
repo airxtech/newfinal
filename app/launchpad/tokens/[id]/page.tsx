@@ -6,11 +6,10 @@ import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, ExternalLink, Users, Clock, LineChart, RefreshCw } from 'lucide-react'
 import { useTonConnectUI } from '@tonconnect/ui-react'
 import { TradeModal } from '@/app/components/token/TradeModal'
+import { useTokenUpdates } from '@/app/hooks/useTokenUpdates'
 import styles from './page.module.css'
 import { PriceChart } from '@/app/components/token/PriceChart'
 import { Spinner } from '@/app/components/ui/spinner'
-import { showErrorPopup } from '@/lib/services/popupService'
-import io from 'socket.io-client'
 
 interface TokenData {
   id: string
@@ -114,42 +113,15 @@ export default function TokenPage() {
     zoa: 0
   })
   const [isRefreshing, setIsRefreshing] = useState(false)
-
-  const observerRef = useRef<IntersectionObserver | null>(null)
   const lastTransactionRef = useRef<HTMLDivElement | null>(null)
 
-  const handleError = (error: any, type: keyof ErrorStates) => {
-    const message = error?.message || 'An error occurred';
-    setErrors(prev => ({ ...prev, [type]: message }));
-    showErrorPopup(message);
-  }
-
-  const retryRequest = async <T,>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> => {
-    let lastError: Error | null = null
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        return await fn()
-      } catch (error) {
-        lastError = error as Error
-        if (attempt === maxAttempts) break
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
-      }
-    }
-
-    throw lastError
-  }
-
-  useEffect(() => {
-    const socket = io(process.env.NEXT_PUBLIC_WEBSOCKET_URL || '', {
-      query: { tokenId: params.id }
-    })
-
-    socket.on('price_update', (data: { price: number }) => {
-      setToken(prev => prev ? { ...prev, currentPrice: data.price } : null)
-    })
-
-    socket.on('new_transaction', (transaction: Transaction) => {
+  // Real-time updates subscription
+  useTokenUpdates({
+    tokenId: params.id as string,
+    onPriceUpdate: (price) => {
+      setToken(prev => prev ? { ...prev, currentPrice: price } : null)
+    },
+    onNewTransaction: (transaction) => {
       setTransactions(prev => [transaction, ...prev])
       setToken(prev => {
         if (!prev) return null
@@ -161,13 +133,13 @@ export default function TokenPage() {
           marketCap: prev.currentPrice * (prev.currentTokensSold + tokenChange)
         }
       })
-    })
-
-    return () => {
-      socket.disconnect()
+    },
+    onTokenUpdate: (data) => {
+      setToken(prev => prev ? { ...prev, ...data } : null)
     }
-  }, [params.id])
+  })
 
+  // Infinite scroll setup
   useEffect(() => {
     if (!hasMore || loadingStates.more) return
 
@@ -184,8 +156,6 @@ export default function TokenPage() {
       observer.observe(lastTransactionRef.current)
     }
 
-    observerRef.current = observer
-
     return () => observer.disconnect()
   }, [hasMore, loadingStates.more])
 
@@ -193,17 +163,22 @@ export default function TokenPage() {
     try {
       if (!silent) setLoadingStates(prev => ({ ...prev, token: true }))
 
-      const response = await retryRequest(() => 
-        fetch(`/api/tokens/${params.id}`)
-      )
+      const response = await fetch(`/api/tokens/${params.id}`)
+      if (!response.ok) throw new Error('Failed to fetch token')
       const data = await response.json()
-
-      if (!response.ok) throw new Error(data.error || 'Failed to fetch token')
 
       setToken(data)
       setErrors(prev => ({ ...prev, token: undefined }))
-    } catch (error) {
-      handleError(error, 'token')
+    } catch (error: any) {
+      const message = error?.message || 'Failed to fetch token data'
+      setErrors(prev => ({ ...prev, token: message }))
+      if (!silent) {
+        window.Telegram.WebApp.showPopup({
+          title: 'Error',
+          message,
+          buttons: [{ type: 'close' }]
+        })
+      }
     } finally {
       if (!silent) setLoadingStates(prev => ({ ...prev, token: false }))
     }
@@ -213,19 +188,19 @@ export default function TokenPage() {
     try {
       setLoadingStates(prev => ({ ...prev, transactions: true }))
 
-      const response = await retryRequest(() =>
-        fetch(`/api/tokens/${params.id}/transactions?page=1&limit=${TRANSACTIONS_PER_PAGE}`)
+      const response = await fetch(
+        `/api/tokens/${params.id}/transactions?page=1&limit=${TRANSACTIONS_PER_PAGE}`
       )
+      if (!response.ok) throw new Error('Failed to fetch transactions')
       const data = await response.json()
-
-      if (!response.ok) throw new Error(data.error || 'Failed to fetch transactions')
 
       setTransactions(data.transactions)
       setHasMore(data.hasMore)
       setPage(2)
       setErrors(prev => ({ ...prev, transactions: undefined }))
-    } catch (error) {
-      handleError(error, 'transactions')
+    } catch (error: any) {
+      const message = error?.message || 'Failed to fetch transactions'
+      setErrors(prev => ({ ...prev, transactions: message }))
     } finally {
       setLoadingStates(prev => ({ ...prev, transactions: false }))
     }
@@ -237,18 +212,18 @@ export default function TokenPage() {
     try {
       setLoadingStates(prev => ({ ...prev, more: true }))
 
-      const response = await retryRequest(() =>
-        fetch(`/api/tokens/${params.id}/transactions?page=${page}&limit=${TRANSACTIONS_PER_PAGE}`)
+      const response = await fetch(
+        `/api/tokens/${params.id}/transactions?page=${page}&limit=${TRANSACTIONS_PER_PAGE}`
       )
+      if (!response.ok) throw new Error('Failed to fetch more transactions')
       const data = await response.json()
-
-      if (!response.ok) throw new Error(data.error || 'Failed to fetch more transactions')
 
       setTransactions(prev => [...prev, ...data.transactions])
       setHasMore(data.hasMore)
       setPage(prev => prev + 1)
-    } catch (error) {
-      handleError(error, 'transactions')
+    } catch (error: any) {
+      const message = error?.message || 'Failed to load more transactions'
+      setErrors(prev => ({ ...prev, transactions: message }))
     } finally {
       setLoadingStates(prev => ({ ...prev, more: false }))
     }
@@ -258,17 +233,15 @@ export default function TokenPage() {
     try {
       setLoadingStates(prev => ({ ...prev, holders: true }))
 
-      const response = await retryRequest(() =>
-        fetch(`/api/tokens/${params.id}/holders`)
-      )
+      const response = await fetch(`/api/tokens/${params.id}/holders`)
+      if (!response.ok) throw new Error('Failed to fetch holders')
       const data = await response.json()
-
-      if (!response.ok) throw new Error(data.error || 'Failed to fetch holders')
 
       setHolders(data)
       setErrors(prev => ({ ...prev, holders: undefined }))
-    } catch (error) {
-      handleError(error, 'holders')
+    } catch (error: any) {
+      const message = error?.message || 'Failed to fetch holders'
+      setErrors(prev => ({ ...prev, holders: message }))
     } finally {
       setLoadingStates(prev => ({ ...prev, holders: false }))
     }
@@ -284,15 +257,9 @@ export default function TokenPage() {
       if (!webApp?.initDataUnsafe?.user?.id) return
 
       const [tonResponse, tokenResponse, userResponse] = await Promise.all([
-        retryRequest(() => 
-          fetch(`/api/ton/balance?address=${tonConnectUI.wallet?.account.address}`)
-        ),
-        retryRequest(() => 
-          fetch(`/api/tokens/${params.id}/balance?telegramId=${webApp.initDataUnsafe.user.id}`)
-        ),
-        retryRequest(() => 
-          fetch(`/api/user?telegramId=${webApp.initDataUnsafe.user.id}`)
-        )
+        fetch(`/api/ton/balance?address=${tonConnectUI.wallet.account.address}`),
+        fetch(`/api/tokens/${params.id}/balance?telegramId=${webApp.initDataUnsafe.user.id}`),
+        fetch(`/api/user?telegramId=${webApp.initDataUnsafe.user.id}`)
       ])
 
       const [tonData, tokenData, userData] = await Promise.all([
@@ -301,23 +268,21 @@ export default function TokenPage() {
         userResponse.json()
       ])
 
-      if (!tonResponse.ok || !tokenResponse.ok || !userResponse.ok) {
-        throw new Error('Failed to fetch balances')
-      }
-
       setUserBalances({
         ton: Number(tonData.result?.balance || 0) / 1e9,
         token: tokenData.balance || 0,
         zoa: userData.zoaBalance || 0
       })
       setErrors(prev => ({ ...prev, userBalances: undefined }))
-    } catch (error) {
-      handleError(error, 'userBalances')
+    } catch (error: any) {
+      const message = error?.message || 'Failed to fetch balances'
+      setErrors(prev => ({ ...prev, userBalances: message }))
     } finally {
       setLoadingStates(prev => ({ ...prev, userBalances: false }))
     }
   }, [connected, params.id, tonConnectUI.wallet?.account.address])
 
+  // Initial data fetch
   useEffect(() => {
     fetchTokenData()
     fetchTransactions()
@@ -345,14 +310,13 @@ export default function TokenPage() {
     setShowTradeModal(true)
   }
 
-  const formatValue = (value: number | undefined) => {
-    if (typeof value !== 'number') return '$0.00';
+  const formatValue = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 6
-    }).format(value);
+    }).format(value)
   }
 
   const formatAddress = (address: string) => {
@@ -428,17 +392,23 @@ export default function TokenPage() {
       <div className={styles.metrics}>
         <div className={styles.metricCard}>
           <Users size={20} />
-          <span className={styles.metricValue}>{typeof token.holdersCount === 'number' ? token.holdersCount.toLocaleString() : '0'}</span>
+          <span className={styles.metricValue}>
+            {typeof token.holdersCount === 'number' ? token.holdersCount.toLocaleString() : '0'}
+          </span>
           <span className={styles.metricLabel}>Holders</span>
         </div>
         <div className={styles.metricCard}>
           <LineChart size={20} />
-          <span className={styles.metricValue}>{typeof token.transactionCount === 'number' ? token.transactionCount.toLocaleString() : '0'}</span>
+          <span className={styles.metricValue}>
+            {typeof token.transactionCount === 'number' ? token.transactionCount.toLocaleString() : '0'}
+          </span>
           <span className={styles.metricLabel}>Trades</span>
         </div>
         <div className={styles.metricCard}>
           <Clock size={20} />
-          <span className={styles.metricValue}>{typeof token.bondingCurve === 'number' ? token.bondingCurve.toFixed(1) : '0'}%</span>
+          <span className={styles.metricValue}>
+            {typeof token.bondingCurve === 'number' ? token.bondingCurve.toFixed(1) : '0'}%
+          </span>
           <span className={styles.metricLabel}>Bonding</span>
         </div>
       </div>
@@ -446,7 +416,7 @@ export default function TokenPage() {
       <PriceChart tokenId={token.id} currentPrice={token.currentPrice} />
 
       <div className={styles.bondingCurve}>
-      <div className={styles.curveHeader}>
+        <div className={styles.curveHeader}>
           <span>Bonding Curve Progress</span>
           <span>{token.bondingCurve}%</span>
         </div>
@@ -512,7 +482,9 @@ export default function TokenPage() {
             <div className={styles.tokenMetrics}>
               <div className={styles.metricRow}>
                 <span>Total Supply</span>
-                <span>{typeof token.totalSupply === 'number' ? token.totalSupply.toLocaleString() : '0'} {token.ticker}</span>
+                <span>
+                  {typeof token.totalSupply === 'number' ? token.totalSupply.toLocaleString() : '0'} {token.ticker}
+                </span>
               </div>
               <div className={styles.metricRow}>
                 <span>Current Step</span>
@@ -520,7 +492,9 @@ export default function TokenPage() {
               </div>
               <div className={styles.metricRow}>
                 <span>Tokens in Market</span>
-                <span>{typeof token.currentTokensSold === 'number' ? token.currentTokensSold.toLocaleString() : '0'} {token.ticker}</span>
+                <span>
+                  {typeof token.currentTokensSold === 'number' ? token.currentTokensSold.toLocaleString() : '0'} {token.ticker}
+                </span>
               </div>
             </div>
           </div>

@@ -1,66 +1,91 @@
 // lib/services/tonPriceService.ts
-import { prisma } from '../prisma'
+import { prisma } from '../prisma';
 
 export class TonPriceService {
-  private static readonly CMC_API_KEY = process.env.COINMARKETCAP_API_KEY
-  private static readonly TON_CMC_ID = '11419' // TON's ID on CoinMarketCap
+  private static readonly CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+  private static priceCache: { value: number; timestamp: number } | null = null;
 
-  static async updateTonPrice(): Promise<number> {
+  static async updatePrice(): Promise<number> {
     try {
       const response = await fetch(
-        `https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest?id=${this.TON_CMC_ID}`,
+        'https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest?symbol=TON',
         {
           headers: {
-            'X-CMC_PRO_API_KEY': this.CMC_API_KEY || '',
+            'X-CMC_PRO_API_KEY': process.env.CMC_API_KEY || '',
             'Accept': 'application/json'
-          }
+          },
+          next: { revalidate: 60 } // Cache for 1 minute
         }
-      )
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch TON price')
+        throw new Error('Failed to fetch TON price');
       }
 
-      const data = await response.json()
-      const tonPrice = data.data[this.TON_CMC_ID].quote.USD.price
+      const data = await response.json();
+      const price = data.data.TON[0].quote.USD.price;
 
       // Store in database
       await prisma.tonPrice.create({
         data: {
           id: Date.now().toString(),
-          price: tonPrice,
+          price,
           timestamp: new Date()
         }
-      })
+      });
 
-      return tonPrice
+      // Update cache
+      this.priceCache = {
+        value: price,
+        timestamp: Date.now()
+      };
+
+      return price;
     } catch (error) {
-      console.error('Error updating TON price:', error)
-      throw error
+      console.error('Error updating TON price:', error);
+      
+      // Try to get the last known price from the database
+      const lastPrice = await this.getLastKnownPrice();
+      if (lastPrice) return lastPrice;
+      
+      throw error;
     }
   }
 
-  static async getCurrentTonPrice(): Promise<number> {
+  private static async getLastKnownPrice(): Promise<number | null> {
     try {
-      // First try to get the latest price from our database
-      const latestPrice = await prisma.tonPrice.findFirst({
-        orderBy: { timestamp: 'desc' },
-        where: {
-          timestamp: {
-            gte: new Date(Date.now() - 15 * 60 * 1000) // Price not older than 15 minutes
-          }
-        }
-      })
+      const lastPrice = await prisma.tonPrice.findFirst({
+        orderBy: { timestamp: 'desc' }
+      });
+      return lastPrice?.price || null;
+    } catch {
+      return null;
+    }
+  }
 
-      if (latestPrice) {
-        return latestPrice.price
+  static async getPrice(): Promise<number> {
+    try {
+      // Check cache first
+      if (this.priceCache && 
+          Date.now() - this.priceCache.timestamp < this.CACHE_DURATION) {
+        return this.priceCache.value;
       }
 
-      // If no recent price found, fetch new price
-      return await this.updateTonPrice()
+      // Get latest price from database
+      const lastPrice = await this.getLastKnownPrice();
+      if (lastPrice) {
+        this.priceCache = {
+          value: lastPrice,
+          timestamp: Date.now()
+        };
+        return lastPrice;
+      }
+
+      // If no price in cache or database, fetch new price
+      return await this.updatePrice();
     } catch (error) {
-      console.error('Error getting TON price:', error)
-      throw error
+      console.error('Error getting TON price:', error);
+      throw error;
     }
   }
 }

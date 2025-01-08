@@ -6,7 +6,8 @@
     "vercel-build": "prisma generate && next build",
     "build": "next build && next export",
     "start": "next start",
-    "dev": "next dev"
+    "dev": "next dev",
+    "update-ton-price": "ts-node scripts/updateTonPrice.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -23,8 +24,6 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "recharts": "^2.15.0",
-    "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1",
     "uuid": "^11.0.3"
   },
   "devDependencies": {
