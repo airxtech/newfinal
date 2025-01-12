@@ -70,9 +70,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const validateUser = async (userData: any) => {
     try {
-      const response = await fetch(`/api/user?telegramId=${userData.id}`);
+      const response = await fetch(`/api/user?telegramId=${userData.id}`)
       if (!response.ok && response.status !== 404) {
-        throw new Error('Failed to fetch user data');
+        throw new Error('Failed to fetch user data')
       }
 
       if (response.status === 404) {
@@ -85,12 +85,28 @@ export default function AppLayout({ children }: AppLayoutProps) {
             lastName: userData.last_name || '',
             username: userData.username || ''
           })
-        });
+        })
       }
     } catch (error) {
-      console.error('Error in validateUser:', error);
+      console.error('Error in validateUser:', error)
     }
-  };
+  }
+
+  if (!isClient) {
+    return <div className={styles.loading}>Initializing...</div>
+  }
+
+  if (!user) {
+    return (
+      <div className={styles.loading}>
+        <h2>Loading ZOA.fund</h2>
+        <p>Status: {initStatus}</p>
+        <div className={styles.hint}>
+          Please open this app through Telegram
+        </div>
+      </div>
+    )
+  }
 
   const forceVideoPlay = async () => {
     if (videoRef.current) {
