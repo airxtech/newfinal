@@ -1,15 +1,19 @@
 'use client';
 
+import { useEffect, useState, useRef } from 'react';
+import Navigation from '../Navigation';
+import Header from '../Header';
+import styles from './AppLayout.module.css';
+
 declare global {
   interface Window {
     Telegram: any;
   }
 }
 
-import { useEffect, useState, useRef } from 'react';
-import Navigation from '../Navigation';
-import Header from '../Header';
-import styles from './AppLayout.module.css';
+interface AppLayoutProps {
+  children: React.ReactNode
+}
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
