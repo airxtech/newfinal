@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Header from '../Header';
 import styles from './AppLayout.module.css';
-import Link from 'next/link';
 import Navigation from '../Navigation';
 
 declare global {
@@ -30,9 +29,28 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [isClient, setIsClient] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [initStatus, setInitStatus] = useState<string>('initial');
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [isVideoVisible, setIsVideoVisible] = useState(true);
+  const [videoError, setVideoError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+
+  const forceVideoPlay = async () => {
+    if (videoRef.current) {
+      try {
+        await videoRef.current.play();
+        setIsVideoVisible(true);
+      } catch (error) {
+        console.error('Video play error:', error);
+        setIsVideoVisible(false);
+      }
+    }
+  };
 
   useEffect(() => {
+    // Prevent body scroll when app is initializing
+    document.body.style.overflow = 'hidden';
+    
     setIsClient(true);
     
     // Telegram initialization
@@ -58,6 +76,36 @@ export default function AppLayout({ children }: AppLayoutProps) {
     };
 
     initTelegram();
+
+    // Handle page visibility and focus
+    const handleVisibilityChange = async () => {
+      if (document.hidden) {
+        setIsVideoVisible(false);
+        if (videoRef.current) {
+          videoRef.current.pause();
+        }
+      } else {
+        setTimeout(() => {
+          setIsVideoVisible(true);
+          forceVideoPlay();
+        }, 100);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    window.addEventListener('focus', () => {
+      setTimeout(() => {
+        setIsVideoVisible(true);
+        forceVideoPlay();
+      }, 100);
+    });
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.body.style.overflow = '';
+    };
   }, []);
 
   const validateUser = async (userData: any) => {
@@ -108,35 +156,43 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className={styles.container}>
+      {/* Background color */}
       <div className={styles.background} />
-
-      {/* Simplified video background */}
-      <div className={styles.videoContainer}>
-        <video
-          ref={videoRef}
-          autoPlay
-          loop
-          muted
-          playsInline
-          className={styles.backgroundVideo}
-        >
-          <source src="/bgvideo.mp4" type="video/mp4" />
-        </video>
-      </div>
+      
+      {/* Video background */}
+      {!videoError && isVideoVisible && (
+        <div className={styles.videoContainer}>
+          <video
+            ref={videoRef}
+            autoPlay
+            loop
+            muted
+            playsInline
+            onLoadedData={() => {
+              setIsVideoLoaded(true);
+              forceVideoPlay();
+            }}
+            onError={(e) => {
+              console.error('Video error event:', e);
+              setVideoError(true);
+              setIsVideoVisible(false);
+            }}
+            className={`${styles.backgroundVideo} ${isVideoLoaded ? styles.videoLoaded : ''}`}
+          >
+            <source src="/bgvideo.mp4" type="video/mp4" />
+          </video>
+        </div>
+      )}
 
       <Header />
 
       <main className={`${styles.main} ${!shouldShowNavigation() ? styles.noNav : ''}`}>
-        {children}
+        <div ref={mainRef} className={styles.scrollContainer}>
+          {children}
+        </div>
       </main>
 
-      {shouldShowNavigation() && (
-        <nav className={styles.navigation}>
-          <div className={styles.container}>
-            <Navigation />
-          </div>
-        </nav>
-      )}
+      {shouldShowNavigation() && <Navigation />}
     </div>
   );
 }
