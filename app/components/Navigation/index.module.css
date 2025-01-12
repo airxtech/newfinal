@@ -1,0 +1,53 @@
+.nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background-color: rgba(17, 24, 39, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    touch-action: none;
+  }
+  
+  .container {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.25rem;
+    padding: 0.75rem 0.5rem; /* Increased padding */
+  }
+  
+  .link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 0.25rem; /* Increased padding */
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    color: rgb(156, 163, 175);
+    touch-action: none;
+  }
+  
+  .link:hover {
+    color: rgb(243, 244, 246);
+  }
+  
+  .active {
+    color: rgb(96, 165, 250);
+    background-color: rgba(31, 41, 55, 0.5);
+  }
+  
+  .icon {
+    width: 1.5rem;  /* Back to original size */
+    height: 1.5rem; /* Back to original size */
+  }
+  
+  .label {
+    font-size: 0.75rem; /* Back to original size */
+    margin-top: 0.25rem; /* Back to original spacing */
+    line-height: 1;
+  }
