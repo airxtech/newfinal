@@ -1,10 +1,12 @@
+// app/components/layout/AppLayout.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Header from '../Header'
 import Navigation from '../Navigation'
 import styles from './AppLayout.module.css'
+import { Home, Coins, Rocket, CheckSquare, Wallet } from 'lucide-react'
 
 declare global {
   interface Window {
@@ -22,6 +24,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [isClient, setIsClient] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [initStatus, setInitStatus] = useState<string>('initial')
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false)
+  const [isVideoVisible, setIsVideoVisible] = useState(true)
+  const [videoError, setVideoError] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
     setIsClient(true)
@@ -34,6 +40,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
     waitForTelegram()
   }, [])
+
+  const navigation = [
+    { name: 'Home', path: '/', icon: Home },
+    { name: 'Earn', path: '/earn', icon: Coins },
+    { name: 'Launchpad', path: '/launchpad', icon: Rocket },
+    { name: 'Tasks', path: '/tasks', icon: CheckSquare },
+    { name: 'Wallet', path: '/wallet', icon: Wallet }
+  ]
 
   const initTelegram = () => {
     try {
@@ -78,6 +92,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
+  const forceVideoPlay = async () => {
+    if (videoRef.current) {
+      try {
+        await videoRef.current.play();
+        setIsVideoVisible(true);
+      } catch (error) {
+        console.error('Video play error:', error);
+        setIsVideoVisible(false);
+      }
+    }
+  };
+
   if (!isClient) {
     return <div className={styles.loading}>Initializing...</div>
   }
@@ -94,6 +120,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     )
   }
 
+  // Add this function to hide navigation on specific pages
   const shouldShowNavigation = () => {
     const mainPages = ['/', '/earn', '/launchpad', '/tasks', '/wallet'];
     return mainPages.includes(pathname);
@@ -101,8 +128,34 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className={styles.container}>
+      {/* Background color */}
       <div className={styles.background} />
       
+      {/* Video background */}
+      {!videoError && isVideoVisible && (
+        <div className={styles.videoContainer}>
+          <video
+            ref={videoRef}
+            autoPlay
+            loop
+            muted
+            playsInline
+            onLoadedData={() => {
+              setIsVideoLoaded(true);
+              forceVideoPlay();
+            }}
+            onError={(e) => {
+              console.error('Video error event:', e);
+              setVideoError(true);
+              setIsVideoVisible(false);
+            }}
+            className={`${styles.backgroundVideo} ${isVideoLoaded ? styles.videoLoaded : ''}`}
+          >
+            <source src="/bgvideo.mp4" type="video/mp4" />
+          </video>
+        </div>
+      )}
+
       <Header />
 
       <main className={`${styles.main} ${!shouldShowNavigation() ? styles.noNav : ''}`}>
