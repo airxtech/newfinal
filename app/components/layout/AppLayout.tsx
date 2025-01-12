@@ -53,8 +53,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
     
     setIsClient(true);
     
-    // Telegram initialization
-    const initTelegram = () => {
+    // Telegram initialization with recursive waiting
+    const waitForTelegram = () => {
       if (window.Telegram?.WebApp) {
         try {
           const webApp = window.Telegram.WebApp;
@@ -66,16 +66,24 @@ export default function AppLayout({ children }: AppLayoutProps) {
             setInitStatus('loaded');
             validateUser(webApp.initDataUnsafe.user);
           } else {
+            // If no user, keep trying
+            setTimeout(waitForTelegram, 100);
             setInitStatus('no-user');
           }
         } catch (error) {
           console.error('WebApp init error:', error);
+          // Retry on error
+          setTimeout(waitForTelegram, 100);
           setInitStatus('error');
         }
+      } else {
+        // Keep trying if WebApp is not available
+        setTimeout(waitForTelegram, 100);
       }
     };
 
-    initTelegram();
+    // Start the recursive waiting
+    waitForTelegram();
 
     // Handle page visibility and focus
     const handleVisibilityChange = async () => {
