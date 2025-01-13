@@ -62,19 +62,31 @@ export default function AppLayout({ children }: AppLayoutProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             telegramId: userData.id,
-            firstName: userData.first_name,
-            lastName: userData.last_name || '',
-            username: userData.username || ''
+          firstName: userData.first_name,
+          lastName: userData.last_name || '',
+          username: userData.username || '',
+          referralCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
+          scratchChances: 3,
+          zoaBalance: 0,
+          lastChanceReset: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
           })
         })
 
         if (!createResponse.ok) {
           const errorData = await createResponse.json()
+          console.error('User creation failed:', errorData)
           throw new Error(errorData.error || 'Failed to create user')
         }
       }
     } catch (error) {
       console.error('Error in validateUser:', error)
+      // Add more detailed error logging
+      if (error instanceof Error) {
+        console.error('Error message:', error.message)
+        console.error('Error stack:', error.stack)
+      }
     }
   }
 
