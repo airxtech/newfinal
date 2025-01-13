@@ -67,41 +67,48 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const validateUser = async (userData: any) => {
     try {
       if (!userData?.id) {
-        console.error('Invalid user data')
-        setInitStatus('error')
-        return
+        console.error('Invalid user data:', userData);
+        setInitStatus('error');
+        return;
       }
-
-      const response = await fetch(`/api/user?telegramId=${userData.id}`)
+  
+      console.log('Checking for existing user:', userData.id);
+      const response = await fetch(`/api/user?telegramId=${userData.id}`);
       
       if (!response.ok && response.status !== 404) {
-        throw new Error('Failed to fetch user data')
+        const errorData = await response.json().catch(() => ({}));
+        console.error('User fetch error:', response.status, errorData);
+        throw new Error('Failed to fetch user data');
       }
-
+  
       if (response.status === 404) {
+        console.log('User not found, creating new user...');
+        const userPayload = {
+          telegramId: userData.id,
+          firstName: userData.first_name,
+          lastName: userData.last_name || '',
+          username: userData.username || '',
+        };
+        console.log('User creation payload:', userPayload);
+  
         const createResponse = await fetch('/api/user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            telegramId: userData.id,
-            firstName: userData.first_name,
-            lastName: userData.last_name || '',
-            username: userData.username || ''
-          })
-        })
-
+          body: JSON.stringify(userPayload)
+        });
+  
+        const responseData = await createResponse.json();
+        console.log('Create user response:', createResponse.status, responseData);
+  
         if (!createResponse.ok) {
-          throw new Error('Failed to create user')
+          throw new Error(`Failed to create user: ${JSON.stringify(responseData)}`);
         }
-
-        const newUser = await createResponse.json()
-        console.log('New user created:', newUser)
       }
     } catch (error) {
-      console.error('Error in validateUser:', error)
-      setInitStatus('error')
+      console.error('Full error details in validateUser:', error);
+      setInitStatus('error');
     }
-  }
+  };
 
   const forceVideoPlay = async () => {
     if (videoRef.current) {
