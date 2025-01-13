@@ -17,7 +17,6 @@ interface AppLayoutProps {
   children: React.ReactNode
 }
 
-// Constants
 const MAIN_PAGES = ['/', '/earn', '/launchpad', '/tasks', '/wallet']
 
 export default function AppLayout({ children }: AppLayoutProps) {
@@ -31,19 +30,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [videoError, setVideoError] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
-  // Initialize Telegram WebApp
-  useEffect(() => {
-    setIsClient(true)
-    const waitForTelegram = () => {
-      if (window.Telegram?.WebApp) {
-        initTelegram()
-      } else {
-        setTimeout(waitForTelegram, 100)
-      }
-    }
-    waitForTelegram()
-  }, [])
-
   const initTelegram = () => {
     try {
       const webApp = window.Telegram.WebApp
@@ -56,7 +42,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
         validateUser(webApp.initDataUnsafe.user)
       } else {
         setInitStatus('no-user')
-        console.error('No user data in WebApp')
       }
     } catch (error) {
       console.error('WebApp init error:', error)
@@ -66,49 +51,44 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const validateUser = async (userData: any) => {
     try {
-      if (!userData?.id) {
-        console.error('Invalid user data:', userData);
-        setInitStatus('error');
-        return;
-      }
-  
-      console.log('Checking for existing user:', userData.id);
-      const response = await fetch(`/api/user?telegramId=${userData.id}`);
-      
+      const response = await fetch(`/api/user?telegramId=${userData.id}`)
       if (!response.ok && response.status !== 404) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('User fetch error:', response.status, errorData);
-        throw new Error('Failed to fetch user data');
+        throw new Error('Failed to fetch user data')
       }
-  
+
       if (response.status === 404) {
-        console.log('User not found, creating new user...');
-        const userPayload = {
-          telegramId: userData.id,
-          firstName: userData.first_name,
-          lastName: userData.last_name || '',
-          username: userData.username || '',
-        };
-        console.log('User creation payload:', userPayload);
-  
         const createResponse = await fetch('/api/user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(userPayload)
-        });
-  
-        const responseData = await createResponse.json();
-        console.log('Create user response:', createResponse.status, responseData);
-  
+          body: JSON.stringify({
+            telegramId: userData.id,
+            firstName: userData.first_name,
+            lastName: userData.last_name || '',
+            username: userData.username || ''
+          })
+        })
+
         if (!createResponse.ok) {
-          throw new Error(`Failed to create user: ${JSON.stringify(responseData)}`);
+          const errorData = await createResponse.json()
+          throw new Error(errorData.error || 'Failed to create user')
         }
       }
     } catch (error) {
-      console.error('Full error details in validateUser:', error);
-      setInitStatus('error');
+      console.error('Error in validateUser:', error)
     }
-  };
+  }
+
+  useEffect(() => {
+    setIsClient(true)
+    const waitForTelegram = () => {
+      if (window.Telegram?.WebApp) {
+        initTelegram()
+      } else {
+        setTimeout(waitForTelegram, 100)
+      }
+    }
+    waitForTelegram()
+  }, [])
 
   const forceVideoPlay = async () => {
     if (videoRef.current) {
@@ -122,7 +102,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
-  // Loading state before client-side initialization
+  const shouldShowNavigation = () => {
+    return MAIN_PAGES.includes(pathname)
+  }
+
   if (!isClient) {
     return (
       <div className={styles.loading}>
@@ -131,7 +114,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
     )
   }
 
-  // Loading state while waiting for user data
   if (!user) {
     return (
       <div className={styles.loading}>
@@ -142,10 +124,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </div>
       </div>
     )
-  }
-
-  const shouldShowNavigation = () => {
-    return MAIN_PAGES.includes(pathname)
   }
 
   return (
