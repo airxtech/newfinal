@@ -20,6 +20,7 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const [isLayoutStable, setIsLayoutStable] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [initStatus, setInitStatus] = useState<string>('initial')
@@ -29,7 +30,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
-    setIsClient(true)
+    const timer = setTimeout(() => {
+      setIsLayoutStable(true)
+      setIsClient(true)
+    }, 100)
+    
+    return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    if (!isLayoutStable) return
+    
     const waitForTelegram = () => {
       if (window.Telegram?.WebApp) {
         initTelegram()
@@ -38,7 +49,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       }
     }
     waitForTelegram()
-  }, [])
+  }, [isLayoutStable])
 
   const initTelegram = () => {
     try {
@@ -67,16 +78,29 @@ export default function AppLayout({ children }: AppLayoutProps) {
       }
 
       if (response.status === 404) {
-        await fetch('/api/user', {
+        // Generate a unique referral code
+        const referralCode = Math.random().toString(36).substring(2, 10).toUpperCase()
+        
+        const createResponse = await fetch('/api/user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             telegramId: userData.id,
             firstName: userData.first_name,
             lastName: userData.last_name || '',
-            username: userData.username || ''
+            username: userData.username || '',
+            referralCode,
+            scratchChances: 3,
+            zoaBalance: 0,
+            lastChanceReset: new Date().toISOString()
           })
         })
+
+        if (!createResponse.ok) {
+          const errorData = await createResponse.json()
+          console.error('User creation failed:', errorData)
+          throw new Error('Failed to create user')
+        }
       }
     } catch (error) {
       console.error('Error in validateUser:', error)
@@ -95,7 +119,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
-  if (!isClient) {
+  if (!isClient || !isLayoutStable) {
     return (
       <div className={styles.initContainer}>
         <h2>Initializing...</h2>
