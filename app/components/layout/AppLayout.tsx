@@ -28,7 +28,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [videoError, setVideoError] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
-  // Pure Telegram initialization without modification
+  useEffect(() => {
+    setIsClient(true)
+    const waitForTelegram = () => {
+      if (window.Telegram?.WebApp) {
+        initTelegram()
+      } else {
+        setTimeout(waitForTelegram, 100)
+      }
+    }
+    waitForTelegram()
+  }, [])
+
   const initTelegram = () => {
     try {
       const webApp = window.Telegram.WebApp
@@ -48,7 +59,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
-  // Keep original validation logic
   const validateUser = async (userData: any) => {
     try {
       const response = await fetch(`/api/user?telegramId=${userData.id}`)
@@ -73,20 +83,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
-  // Pure initialization effect
-  useEffect(() => {
-    setIsClient(true)
-    const waitForTelegram = () => {
-      if (window.Telegram?.WebApp) {
-        initTelegram()
-      } else {
-        setTimeout(waitForTelegram, 100)
-      }
-    }
-    waitForTelegram()
-  }, [])
-
-  // Video background logic
   const forceVideoPlay = async () => {
     if (videoRef.current) {
       try {
