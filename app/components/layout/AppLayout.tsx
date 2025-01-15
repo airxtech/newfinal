@@ -27,37 +27,67 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [isVideoVisible, setIsVideoVisible] = useState(true)
   const [videoError, setVideoError] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const initRef = useRef<boolean>(false)
 
   useEffect(() => {
-    setIsClient(true)
-    const waitForTelegram = () => {
-      if (window.Telegram?.WebApp) {
-        initTelegram()
-      } else {
-        setTimeout(waitForTelegram, 100)
+    if (initRef.current) return; // Prevent multiple initializations
+    initRef.current = true;
+    
+    const initApp = async () => {
+      setIsClient(true)
+      try {
+        // Wait for Telegram WebApp
+        const waitForTelegram = () => {
+          return new Promise<void>((resolve) => {
+            if (window.Telegram?.WebApp) {
+              resolve()
+            } else {
+              setTimeout(() => waitForTelegram().then(resolve), 100)
+            }
+          })
+        }
+
+        await waitForTelegram()
+
+        // Initialize Telegram WebApp
+        const webApp = window.Telegram.WebApp
+        webApp.ready()
+        webApp.expand()
+
+        // Validate initialization data
+        const initData = webApp.initData
+        if (!initData) {
+          throw new Error('No init data')
+        }
+
+        // Validate auth
+        const authResponse = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData })
+        })
+
+        if (!authResponse.ok) {
+          throw new Error('Auth failed')
+        }
+
+        // Set user and validate
+        const userData = webApp.initDataUnsafe?.user
+        if (userData) {
+          setUser(userData)
+          setInitStatus('loaded')
+          await validateUser(userData)
+        } else {
+          setInitStatus('no-user')
+        }
+      } catch (error) {
+        console.error('Initialization error:', error)
+        setInitStatus('error')
       }
     }
-    waitForTelegram()
+
+    initApp()
   }, [])
-
-  const initTelegram = () => {
-    try {
-      const webApp = window.Telegram.WebApp
-      webApp.ready()
-      webApp.expand()
-
-      if (webApp.initDataUnsafe?.user) {
-        setUser(webApp.initDataUnsafe.user)
-        setInitStatus('loaded')
-        validateUser(webApp.initDataUnsafe.user)
-      } else {
-        setInitStatus('no-user')
-      }
-    } catch (error) {
-      console.error('WebApp init error:', error)
-      setInitStatus('error')
-    }
-  }
 
   const validateUser = async (userData: any) => {
     try {
@@ -67,7 +97,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       }
 
       if (response.status === 404) {
-        await fetch('/api/user', {
+        const createResponse = await fetch('/api/user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -77,9 +107,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
             username: userData.username || ''
           })
         })
+
+        if (!createResponse.ok) {
+          const errorData = await createResponse.json()
+          throw new Error(`User creation failed: ${errorData.error || 'Unknown error'}`)
+        }
+
+        const newUser = await createResponse.json()
+        console.log('User created:', newUser)
       }
     } catch (error) {
       console.error('Error in validateUser:', error)
+      throw error // Propagate error to main init flow
     }
   }
 
