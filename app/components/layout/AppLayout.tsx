@@ -17,8 +17,6 @@ interface AppLayoutProps {
   children: React.ReactNode
 }
 
-const MAIN_PAGES = ['/', '/earn', '/launchpad', '/tasks', '/wallet']
-
 export default function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -30,6 +28,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [videoError, setVideoError] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
+  // Pure Telegram initialization without modification
   const initTelegram = () => {
     try {
       const webApp = window.Telegram.WebApp
@@ -49,6 +48,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
+  // Keep original validation logic
   const validateUser = async (userData: any) => {
     try {
       const response = await fetch(`/api/user?telegramId=${userData.id}`)
@@ -57,39 +57,23 @@ export default function AppLayout({ children }: AppLayoutProps) {
       }
 
       if (response.status === 404) {
-        const createResponse = await fetch('/api/user', {
+        await fetch('/api/user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             telegramId: userData.id,
-          firstName: userData.first_name,
-          lastName: userData.last_name || '',
-          username: userData.username || '',
-          referralCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
-          scratchChances: 3,
-          zoaBalance: 0,
-          lastChanceReset: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+            firstName: userData.first_name,
+            lastName: userData.last_name || '',
+            username: userData.username || ''
           })
         })
-
-        if (!createResponse.ok) {
-          const errorData = await createResponse.json()
-          console.error('User creation failed:', errorData)
-          throw new Error(errorData.error || 'Failed to create user')
-        }
       }
     } catch (error) {
       console.error('Error in validateUser:', error)
-      // Add more detailed error logging
-      if (error instanceof Error) {
-        console.error('Error message:', error.message)
-        console.error('Error stack:', error.stack)
-      }
     }
   }
 
+  // Pure initialization effect
   useEffect(() => {
     setIsClient(true)
     const waitForTelegram = () => {
@@ -102,6 +86,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     waitForTelegram()
   }, [])
 
+  // Video background logic
   const forceVideoPlay = async () => {
     if (videoRef.current) {
       try {
@@ -112,10 +97,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
         setIsVideoVisible(false)
       }
     }
-  }
-
-  const shouldShowNavigation = () => {
-    return MAIN_PAGES.includes(pathname)
   }
 
   if (!isClient) {
@@ -140,10 +121,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className={styles.container}>
-      {/* Background color */}
       <div className={styles.background} />
       
-      {/* Video background */}
       {!videoError && isVideoVisible && (
         <div className={styles.videoContainer}>
           <video
@@ -168,18 +147,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </div>
       )}
 
-      {/* Header */}
       <Header />
-
-      {/* Main content */}
+      
       <main className={styles.main}>
         <div className={styles.scrollContainer}>
           {children}
         </div>
       </main>
       
-      {/* Navigation */}
-      {shouldShowNavigation() && <Navigation />}
+      {pathname && ['/', '/earn', '/launchpad', '/tasks', '/wallet'].includes(pathname) && (
+        <Navigation />
+      )}
     </div>
   )
 }
