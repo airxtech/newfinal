@@ -83,22 +83,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
-  if (!isClient) {
-    return <div className={styles.loading}>Initializing...</div>
-  }
-
-  if (!user) {
-    return (
-      <div className={styles.loading}>
-        <h2>Loading ZOA.fund</h2>
-        <p>Status: {initStatus}</p>
-        <div className={styles.hint}>
-          Please open this app through Telegram
-        </div>
-      </div>
-    )
-  }
-
   const forceVideoPlay = async () => {
     if (videoRef.current) {
       try {
@@ -111,10 +95,32 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
+  if (!isClient) {
+    return (
+      <div className={styles.initContainer}>
+        <h2>Initializing...</h2>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className={styles.initContainer}>
+        <h2>Loading ZOA.fund</h2>
+        <p>Status: {initStatus}</p>
+        <div className={styles.hint}>
+          Please open this app through Telegram
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={styles.container}>
+      {/* Background color */}
       <div className={styles.background} />
       
+      {/* Video background */}
       {!videoError && isVideoVisible && (
         <div className={styles.videoContainer}>
           <video
@@ -140,7 +146,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       )}
 
       <Header />
-      
+
       <main className={styles.main}>
         <div className={styles.scrollContainer}>
           {children}
