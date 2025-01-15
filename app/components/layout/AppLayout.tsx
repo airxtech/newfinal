@@ -1,10 +1,11 @@
 // app/components/layout/AppLayout.tsx
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Header from '../Header'
 import Navigation from '../Navigation'
+import CustomBackground from '../CustomBackground/CustomBackground'
 import styles from './AppLayout.module.css'
 
 declare global {
@@ -20,27 +21,12 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const [isLayoutStable, setIsLayoutStable] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [initStatus, setInitStatus] = useState<string>('initial')
-  const [isVideoLoaded, setIsVideoLoaded] = useState(false)
-  const [isVideoVisible, setIsVideoVisible] = useState(true)
-  const [videoError, setVideoError] = useState(false)
-  const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLayoutStable(true)
-      setIsClient(true)
-    }, 100)
-    
-    return () => clearTimeout(timer)
-  }, [])
-
-  useEffect(() => {
-    if (!isLayoutStable) return
-    
+    setIsClient(true)
     const waitForTelegram = () => {
       if (window.Telegram?.WebApp) {
         initTelegram()
@@ -49,7 +35,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       }
     }
     waitForTelegram()
-  }, [isLayoutStable])
+  }, [])
 
   const initTelegram = () => {
     try {
@@ -78,50 +64,25 @@ export default function AppLayout({ children }: AppLayoutProps) {
       }
 
       if (response.status === 404) {
-        // Generate a unique referral code
-        const referralCode = Math.random().toString(36).substring(2, 10).toUpperCase()
-        
-        const createResponse = await fetch('/api/user', {
+        await fetch('/api/user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             telegramId: userData.id,
             firstName: userData.first_name,
             lastName: userData.last_name || '',
-            username: userData.username || '',
-            referralCode,
-            scratchChances: 3,
-            zoaBalance: 0,
-            lastChanceReset: new Date().toISOString()
+            username: userData.username || ''
           })
         })
-
-        if (!createResponse.ok) {
-          const errorData = await createResponse.json()
-          console.error('User creation failed:', errorData)
-          throw new Error('Failed to create user')
-        }
       }
     } catch (error) {
       console.error('Error in validateUser:', error)
     }
   }
 
-  const forceVideoPlay = async () => {
-    if (videoRef.current) {
-      try {
-        await videoRef.current.play()
-        setIsVideoVisible(true)
-      } catch (error) {
-        console.error('Video play error:', error)
-        setIsVideoVisible(false)
-      }
-    }
-  }
-
-  if (!isClient || !isLayoutStable) {
+  if (!isClient) {
     return (
-      <div className={styles.initContainer}>
+      <div className={styles.loading}>
         <h2>Initializing...</h2>
       </div>
     )
@@ -129,7 +90,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   if (!user) {
     return (
-      <div className={styles.initContainer}>
+      <div className={styles.loading}>
         <h2>Loading ZOA.fund</h2>
         <p>Status: {initStatus}</p>
         <div className={styles.hint}>
@@ -141,45 +102,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className={styles.container}>
-      {/* Background color */}
-      <div className={styles.background} />
-      
-      {/* Video background */}
-      {!videoError && isVideoVisible && (
-        <div className={styles.videoContainer}>
-          <video
-            ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            onLoadedData={() => {
-              setIsVideoLoaded(true)
-              forceVideoPlay()
-            }}
-            onError={(e) => {
-              console.error('Video error event:', e)
-              setVideoError(true)
-              setIsVideoVisible(false)
-            }}
-            className={`${styles.backgroundVideo} ${isVideoLoaded ? styles.videoLoaded : ''}`}
-          >
-            <source src="/bgvideo.mp4" type="video/mp4" />
-          </video>
-        </div>
-      )}
-
+      <CustomBackground />
       <Header />
-
       <main className={styles.main}>
         <div className={styles.scrollContainer}>
           {children}
         </div>
       </main>
-      
-      {pathname && ['/', '/earn', '/launchpad', '/tasks', '/wallet'].includes(pathname) && (
-        <Navigation />
-      )}
+      <Navigation />
     </div>
   )
 }

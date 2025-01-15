@@ -1,4 +1,4 @@
-.initContainer {
+.container {
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -9,87 +9,30 @@
   background-color: var(--tg-theme-bg-color, #ffffff);
   color: var(--tg-theme-text-color, #000000);
   overflow: hidden;
-  z-index: 9999;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  backface-visibility: hidden;
+  height: 100dvh;
+  background-color: var(--tg-theme-bg-color, #ffffff);
+  color: var(--tg-theme-text-color, #000000);
 }
 
-.container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-  -webkit-overflow-scrolling: touch;
-  backface-visibility: hidden;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  contain: layout size paint;
-}
-
-.background {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgb(17, 24, 39);
-  z-index: 0;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-}
-
-.videoContainer {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  will-change: transform;
-  contain: layout size;
-}
-
-.backgroundVideo {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity 0.3s ease-in-out;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  will-change: opacity transform;
-  contain: layout paint;
-}
-
-.videoLoaded {
-  opacity: 0.5;
+.hint {
+  margin-top: 12px;
+  color: var(--tg-theme-hint-color, #999999);
 }
 
 .main {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  flex: 1;
   padding-top: 7rem;
-  padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  position: relative;
+  height: calc(100dvh - 60px);
   z-index: 1;
-  overflow: hidden;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  contain: layout;
 }
 
 .scrollContainer {
@@ -98,11 +41,4 @@
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
   overscroll-behavior: contain;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-}
-
-.hint {
-  margin-top: 12px;
-  color: var(--tg-theme-hint-color, #999999);
 }
