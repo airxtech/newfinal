@@ -1,6 +1,7 @@
 // app/api/user/route.ts
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { v4 as uuidv4 } from 'uuid'
 
 export async function GET(request: Request) {
   try {
@@ -53,9 +54,12 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { 
       telegramId, 
-      tonBalance,
-      walletAddress 
+      firstName,
+      lastName,
+      username
     } = body
+
+    console.log('Attempting to create user with:', body) // Log the incoming data
 
     if (!telegramId) {
       return NextResponse.json(
@@ -64,35 +68,34 @@ export async function POST(request: Request) {
       )
     }
 
-    const user = await prisma.user.update({
-      where: { 
-        telegramId: Number(telegramId) 
-      },
-      data: {
-        ...(tonBalance !== undefined && { tonBalance }),
-        ...(walletAddress && { 
-          walletAddress,
-          lastConnected: new Date() 
-        })
-      },
-      select: {
-        id: true,
-        telegramId: true,
-        firstName: true,
-        lastName: true,
-        username: true,
-        zoaBalance: true,
-        tonBalance: true,
-        walletAddress: true,
-        lastConnected: true
-      }
-    })
-    
-    return NextResponse.json(user)
+    // Try to create user
+    try {
+      const user = await prisma.user.create({
+        data: {
+          id: uuidv4(), // Make sure uuid is imported
+          telegramId: Number(telegramId),
+          firstName,
+          lastName: lastName || '',
+          username: username || '',
+          zoaBalance: 0,
+          referralCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
+          lastChanceReset: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      })
+      return NextResponse.json(user)
+    } catch (dbError: any) {
+      console.error('Database operation details:', dbError) // Log the specific DB error
+      return NextResponse.json(
+        { error: 'Database operation failed', details: dbError.message },
+        { status: 500 }
+      )
+    }
   } catch (error: any) {
-    console.error('POST request error:', error)
+    console.error('POST request error details:', error)
     return NextResponse.json(
-      { error: 'Database operation failed', details: error.message },
+      { error: 'Request failed', details: error.message },
       { status: 500 }
     )
   }
