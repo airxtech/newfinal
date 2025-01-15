@@ -83,24 +83,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
-  const forceVideoPlay = async () => {
-    if (videoRef.current) {
-      try {
-        await videoRef.current.play()
-        setIsVideoVisible(true)
-      } catch (error) {
-        console.error('Video play error:', error)
-        setIsVideoVisible(false)
-      }
-    }
-  }
-
   if (!isClient) {
-    return (
-      <div className={styles.loading}>
-        <h2>Initializing...</h2>
-      </div>
-    )
+    return <div className={styles.loading}>Initializing...</div>
   }
 
   if (!user) {
@@ -113,6 +97,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </div>
       </div>
     )
+  }
+
+  const forceVideoPlay = async () => {
+    if (videoRef.current) {
+      try {
+        await videoRef.current.play()
+        setIsVideoVisible(true)
+      } catch (error) {
+        console.error('Video play error:', error)
+        setIsVideoVisible(false)
+      }
+    }
   }
 
   return (
