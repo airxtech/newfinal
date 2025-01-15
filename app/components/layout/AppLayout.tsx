@@ -1,11 +1,14 @@
 // app/components/layout/AppLayout.tsx
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import Header from '../Header'
-import Navigation from '../Navigation'
+import dynamic from 'next/dynamic'
 import styles from './AppLayout.module.css'
+
+// Dynamically import components to avoid hydration issues
+const Header = dynamic(() => import('../Header'), { ssr: false })
+const Navigation = dynamic(() => import('../Navigation'), { ssr: false })
 
 declare global {
   interface Window {
@@ -20,6 +23,7 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const [mounted, setMounted] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [initStatus, setInitStatus] = useState<string>('initial')
@@ -27,47 +31,54 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [isVideoVisible, setIsVideoVisible] = useState(true)
   const [videoError, setVideoError] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const hasInitialized = useRef(false)
 
+  // Handle initial mount
   useEffect(() => {
-    setIsClient(true)
-    const waitForTelegram = () => {
-      if (window.Telegram?.WebApp) {
-        initTelegram()
-      } else {
-        setTimeout(waitForTelegram, 100)
-      }
-    }
-    waitForTelegram()
+    setMounted(true)
   }, [])
 
-  const initTelegram = () => {
-    try {
-      const webApp = window.Telegram.WebApp
-      webApp.ready()
-      webApp.expand()
+  // Initialize Telegram WebApp
+  useEffect(() => {
+    if (!mounted || hasInitialized.current) return
+    hasInitialized.current = true
 
-      if (webApp.initDataUnsafe?.user) {
-        setUser(webApp.initDataUnsafe.user)
-        setInitStatus('loaded')
-        validateUser(webApp.initDataUnsafe.user)
-      } else {
-        setInitStatus('no-user')
+    const initialize = () => {
+      setIsClient(true)
+      if (!window.Telegram?.WebApp) {
+        setTimeout(initialize, 100)
+        return
       }
-    } catch (error) {
-      console.error('WebApp init error:', error)
-      setInitStatus('error')
+
+      try {
+        const webApp = window.Telegram.WebApp
+        webApp.ready()
+        webApp.expand()
+
+        if (webApp.initDataUnsafe?.user) {
+          setUser(webApp.initDataUnsafe.user)
+          setInitStatus('loaded')
+          validateUser(webApp.initDataUnsafe.user)
+        } else {
+          setInitStatus('no-user')
+        }
+      } catch (error) {
+        console.error('WebApp init error:', error)
+        setInitStatus('error')
+      }
     }
-  }
+
+    initialize()
+  }, [mounted])
 
   const validateUser = async (userData: any) => {
+    if (!userData?.id) return
+
     try {
-      const response = await fetch(`/api/user?telegramId=${userData.id}`)
-      if (!response.ok && response.status !== 404) {
-        throw new Error('Failed to fetch user data')
-      }
-  
-      if (response.status === 404) {
-        // Generate a unique referral code
+      const checkResponse = await fetch(`/api/user?telegramId=${userData.id}`)
+      if (checkResponse.ok) return // User exists
+
+      if (checkResponse.status === 404) {
         const referralCode = Math.random().toString(36).substring(2, 10).toUpperCase()
         
         const createResponse = await fetch('/api/user', {
@@ -84,10 +95,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
             lastChanceReset: new Date().toISOString()
           })
         })
-  
+
         if (!createResponse.ok) {
-          const errorData = await createResponse.json()
-          console.error('User creation failed:', errorData)
+          const error = await createResponse.json()
+          console.error('User creation failed:', error)
           throw new Error('Failed to create user')
         }
       }
@@ -96,19 +107,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
-  const forceVideoPlay = async () => {
-    if (videoRef.current) {
-      try {
-        await videoRef.current.play()
-        setIsVideoVisible(true)
-      } catch (error) {
-        console.error('Video play error:', error)
-        setIsVideoVisible(false)
-      }
-    }
-  }
-
-  if (!isClient) {
+  if (!mounted || !isClient) {
     return (
       <div className={styles.initContainer}>
         <h2>Initializing...</h2>
@@ -130,45 +129,44 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className={styles.container}>
-      {/* Background color */}
       <div className={styles.background} />
       
-      {/* Video background */}
-      {!videoError && isVideoVisible && (
-        <div className={styles.videoContainer}>
-          <video
-            ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            onLoadedData={() => {
-              setIsVideoLoaded(true)
-              forceVideoPlay()
-            }}
-            onError={(e) => {
-              console.error('Video error event:', e)
-              setVideoError(true)
-              setIsVideoVisible(false)
-            }}
-            className={`${styles.backgroundVideo} ${isVideoLoaded ? styles.videoLoaded : ''}`}
-          >
-            <source src="/bgvideo.mp4" type="video/mp4" />
-          </video>
-        </div>
-      )}
+      <Suspense fallback={null}>
+        {!videoError && isVideoVisible && (
+          <div className={styles.videoContainer}>
+            <video
+              ref={videoRef}
+              autoPlay
+              loop
+              muted
+              playsInline
+              onLoadedData={() => {
+                setIsVideoLoaded(true)
+                videoRef.current?.play()
+              }}
+              onError={() => {
+                setVideoError(true)
+                setIsVideoVisible(false)
+              }}
+              className={`${styles.backgroundVideo} ${isVideoLoaded ? styles.videoLoaded : ''}`}
+            >
+              <source src="/bgvideo.mp4" type="video/mp4" />
+            </video>
+          </div>
+        )}
 
-      <Header />
+        <Header />
 
-      <main className={styles.main}>
-        <div className={styles.scrollContainer}>
-          {children}
-        </div>
-      </main>
-      
-      {pathname && ['/', '/earn', '/launchpad', '/tasks', '/wallet'].includes(pathname) && (
-        <Navigation />
-      )}
+        <main className={styles.main}>
+          <div className={styles.scrollContainer}>
+            {children}
+          </div>
+        </main>
+        
+        {pathname && ['/', '/earn', '/launchpad', '/tasks', '/wallet'].includes(pathname) && (
+          <Navigation />
+        )}
+      </Suspense>
     </div>
   )
 }
