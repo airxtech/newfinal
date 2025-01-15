@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Header from '../Header'
 import Navigation from '../Navigation'
-import CustomBackground from '../CustomBackground'
+import CustomBackground from '../CustomBackground/CustomBackground'
 import styles from './AppLayout.module.css'
 
 declare global {
