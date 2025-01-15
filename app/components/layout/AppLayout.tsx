@@ -25,6 +25,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [user, setUser] = useState<any>(null)
   const [initStatus, setInitStatus] = useState<string>('initial')
 
+  // Original initialization code - untouched
   useEffect(() => {
     setIsClient(true)
     const waitForTelegram = () => {
@@ -64,16 +65,26 @@ export default function AppLayout({ children }: AppLayoutProps) {
       }
 
       if (response.status === 404) {
-        await fetch('/api/user', {
+        const createResponse = await fetch('/api/user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             telegramId: userData.id,
             firstName: userData.first_name,
             lastName: userData.last_name || '',
-            username: userData.username || ''
+            username: userData.username || '',
+            referralCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
+            scratchChances: 3,
+            zoaBalance: 0,
+            lastChanceReset: new Date().toISOString()
           })
         })
+
+        if (!createResponse.ok) {
+          const errorData = await createResponse.json()
+          console.error('User creation failed:', errorData)
+          throw new Error('Failed to create user')
+        }
       }
     } catch (error) {
       console.error('Error in validateUser:', error)
@@ -103,13 +114,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className={styles.container}>
       <CustomBackground />
-      <Header />
       <main className={styles.main}>
         <div className={styles.scrollContainer}>
           {children}
         </div>
       </main>
-      <Navigation />
     </div>
   )
 }

@@ -6,8 +6,6 @@
   position: fixed;
   top: 0;
   left: 0;
-  background-color: var(--tg-theme-bg-color, #ffffff);
-  color: var(--tg-theme-text-color, #000000);
   overflow: hidden;
 }
 
@@ -28,10 +26,8 @@
 
 .main {
   flex: 1;
-  padding-top: 7rem;
-  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
   position: relative;
-  height: calc(100dvh - 60px);
+  height: 100%;
   z-index: 1;
 }
 
@@ -39,6 +35,4 @@
   height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  overscroll-behavior: contain;
 }
