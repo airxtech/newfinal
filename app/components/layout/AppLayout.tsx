@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Header from '../Header'
 import Navigation from '../Navigation'
-import CustomBackground from '../CustomBackground/CustomBackground'
+import CustomBackground from '../CustomBackground'
 import styles from './AppLayout.module.css'
 
 declare global {
@@ -25,7 +25,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [user, setUser] = useState<any>(null)
   const [initStatus, setInitStatus] = useState<string>('initial')
 
-  // Original initialization code - untouched
   useEffect(() => {
     setIsClient(true)
     const waitForTelegram = () => {
@@ -91,6 +90,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
+  const shouldShowNavigation = () => {
+    const mainPages = ['/', '/earn', '/launchpad', '/tasks', '/wallet']
+    return mainPages.includes(pathname)
+  }
+
   if (!isClient) {
     return (
       <div className={styles.loading}>
@@ -114,11 +118,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className={styles.container}>
       <CustomBackground />
+      <Header />
       <main className={styles.main}>
         <div className={styles.scrollContainer}>
           {children}
         </div>
       </main>
+      {shouldShowNavigation() && <Navigation />}
     </div>
   )
 }

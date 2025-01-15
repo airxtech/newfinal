@@ -26,8 +26,10 @@
 
 .main {
   flex: 1;
+  padding-top: 7rem;
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
   position: relative;
-  height: 100%;
+  height: calc(100dvh - 60px);
   z-index: 1;
 }
 
@@ -35,4 +37,6 @@
   height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
 }
